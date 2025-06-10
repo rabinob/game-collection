@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkers Game</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .back-btn {
+            background: #95a5a6;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        h1 { color: #333; flex-grow: 1; text-align: center; margin: 0; }
+        .game-board {
+            display: inline-grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 0;
+            border: 3px solid #34495e;
+            border-radius: 5px;
+            margin: 20px auto;
+        }
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .cell.light { background-color: #f4f4f4; }
+        .cell.dark { background-color: #8b4513; }
+        .cell.selected { background-color: #f1c40f !important; }
+        .cell.possible-move { background-color: #2ecc71 !important; }
+        .cell.capture-move { 
+            background-color: #e74c3c !important; 
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+        }
+        .cell.can-capture { 
+            box-shadow: 0 0 8px rgba(255, 165, 0, 0.8); 
+            border: 2px solid rgba(255, 165, 0, 0.9); 
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 8px rgba(255, 165, 0, 0.8); }
+            50% { box-shadow: 0 0 15px rgba(255, 165, 0, 1.0); }
+            100% { box-shadow: 0 0 8px rgba(255, 165, 0, 0.8); }
+        }
+        .piece {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .piece.red { background: #e74c3c; color: white; }
+        .piece.white { background: #ecf0f1; color: #333; }
+        .piece.king { border: 3px solid gold; }
+        .current-player { font-size: 18px; font-weight: bold; margin-bottom: 20px; }
+        
+        .player-setup {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .player-setup h3 {
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+
+        .player-inputs {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .player-input {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 200px;
+        }
+
+        .player-input label {
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+        }
+
+        .player-input input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .player-input input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .start-game-btn {
+            margin-top: 15px;
+            background-color: #27ae60;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .start-game-btn:hover {
+            background-color: #219a52;
+        }
+
+        .setup-btn {
+            background-color: #95a5a6;
+            color: white;
+            padding: 5px 10px;
+            margin-left: 15px;
+            font-size: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .setup-btn:hover {
+            background-color: #7f8c8d;
+        }
+
+        .sms-btn {
+            background-color: #9b59b6;
+            color: white;
+            margin-left: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .sms-btn:hover {
+            background-color: #8e44ad;
+        }
+
+        .email-btn {
+            background-color: #e67e22;
+            color: white;
+            margin-left: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .email-btn:hover {
+            background-color: #d35400;
+        }
+
+        .winner-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .winner-message.show {
+            display: block;
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .score {
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .rules {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            text-align: left;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="main.html" class="back-btn">← Back to Games</a>
+            <h1>🔴 International Draughts</h1>
+            <div style="width: 120px;"></div>
+        </div>
+        
+        <div class="player-setup" id="player-setup">
+            <h3>👥 Player Setup</h3>
+            <div class="player-inputs">
+                <div class="player-input">
+                    <label>Red Player:</label>
+                    <input type="text" id="player-red-name" placeholder="Enter name" maxlength="20">
+                    <input type="tel" id="player-red-phone" placeholder="Phone number" maxlength="15">
+                    <input type="email" id="player-red-email" placeholder="Email address" maxlength="50">
+                </div>
+                <div class="player-input">
+                    <label>White Player:</label>
+                    <input type="text" id="player-white-name" placeholder="Enter name" maxlength="20">
+                    <input type="tel" id="player-white-phone" placeholder="Phone number" maxlength="15">
+                    <input type="email" id="player-white-email" placeholder="Email address" maxlength="50">
+                </div>
+            </div>
+            <button class="start-game-btn" onclick="startGame()">Start Game</button>
+        </div>
+
+        <div class="game-info" id="game-info" style="display: none;">
+            Current Player: <span id="current-player" style="color: #3498db;">White</span>
+            <button class="setup-btn" onclick="showSetup()">Change Players</button>
+        </div>
+
+        <div class="game-area" id="game-area" style="display: none;">
+            <div class="game-board" id="game-board"></div>
+
+            <div class="winner-message" id="winner-message"></div>
+
+            <div class="score">
+                <div><span id="player-red-display">Red</span> Wins: <span id="red-wins">0</span> | <span id="player-white-display">White</span> Wins: <span id="white-wins">0</span></div>
+            </div>
+
+            <div class="controls">
+                <button onclick="resetGame()" style="background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; margin: 0 5px;">Reset Game</button>
+                <button class="sms-btn" id="sms-btn" onclick="sendCongratulations()" style="display: none;">📱 Send SMS</button>
+                <button class="email-btn" id="email-btn" onclick="sendCongratulationsEmail()" style="display: none;">📧 Send Email</button>
+            </div>
+        </div>
+
+        <div class="rules">
+            <h3 style="text-align: center; margin-bottom: 10px;">📋 How to Play</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: 5px;">• <strong>White moves first!</strong> Traditional International Draughts rule</li>
+                <li style="margin-bottom: 5px;">• <strong>Movement:</strong> Regular pieces move only forward diagonally</li>
+                <li style="margin-bottom: 5px;">• <strong>Captures:</strong> Regular pieces can capture in ALL directions (forward & backward!)</li>
+                <li style="margin-bottom: 5px;">• <strong>Must capture if possible!</strong> Captures are mandatory</li>
+                <li style="margin-bottom: 5px;">• <strong>Player choice:</strong> When multiple captures possible, you choose which one!</li>
+                <li style="margin-bottom: 5px;">• Multi-jumps: Continue jumping with same piece if more captures available</li>
+                <li style="margin-bottom: 5px;">• Reach the opposite end to become a king (👑)</li>
+                <li style="margin-bottom: 5px;">• <strong>Flying Kings:</strong> Kings can move ANY distance diagonally!</li>
+                <li style="margin-bottom: 5px;">• <strong>Long-range captures:</strong> Kings can capture pieces at any distance</li>
+                <li style="margin-bottom: 5px;">• Newly crowned kings can continue multi-jumps immediately</li>
+                <li style="margin-bottom: 5px;">• Capture all enemy pieces to win!</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let board = [];
+        let currentPlayer = 'white';
+        let selectedPiece = null;
+        let gameActive = true;
+        let gameStarted = false;
+        let scores = { red: 0, white: 0 };
+        let players = {
+            red: { name: '', phone: '', email: '' },
+            white: { name: '', phone: '', email: '' }
+        };
+        let winner = null;
+        let mustContinueWith = null; // Piece that must continue jumping
+        let possibleMoves = [];
+
+        function initGame() {
+            board = Array(8).fill().map(() => Array(8).fill(null));
+            setupInitialBoard();
+            loadScores();
+            loadPlayers();
+        }
+
+        function setupInitialBoard() {
+            // Place red pieces (top 3 rows)
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 === 1) {
+                        board[row][col] = { color: 'red', isKing: false };
+                    }
+                }
+            }
+
+            // Place white pieces (bottom 3 rows)
+            for (let row = 5; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 === 1) {
+                        board[row][col] = { color: 'white', isKing: false };
+                    }
+                }
+            }
+        }
+
+        // Start game after player setup
+        function startGame() {
+            const playerRedName = document.getElementById('player-red-name').value.trim();
+            const playerRedPhone = document.getElementById('player-red-phone').value.trim();
+            const playerRedEmail = document.getElementById('player-red-email').value.trim();
+            const playerWhiteName = document.getElementById('player-white-name').value.trim();
+            const playerWhitePhone = document.getElementById('player-white-phone').value.trim();
+            const playerWhiteEmail = document.getElementById('player-white-email').value.trim();
+
+            if (!playerRedName || !playerWhiteName) {
+                alert('Please enter names for both players!');
+                return;
+            }
+
+            players.red.name = playerRedName;
+            players.red.phone = playerRedPhone;
+            players.red.email = playerRedEmail;
+            players.white.name = playerWhiteName;
+            players.white.phone = playerWhitePhone;
+            players.white.email = playerWhiteEmail;
+
+            savePlayers();
+            updatePlayerDisplays();
+
+            document.getElementById('player-setup').style.display = 'none';
+            document.getElementById('game-info').style.display = 'block';
+            document.getElementById('game-area').style.display = 'block';
+
+            gameStarted = true;
+            createBoard();
+        }
+
+        // Show setup screen
+        function showSetup() {
+            document.getElementById('player-setup').style.display = 'block';
+            document.getElementById('game-info').style.display = 'none';
+            document.getElementById('game-area').style.display = 'none';
+            gameStarted = false;
+        }
+
+        // Update player displays
+        function updatePlayerDisplays() {
+            document.getElementById('player-red-display').textContent = players.red.name || 'Red';
+            document.getElementById('player-white-display').textContent = players.white.name || 'White';
+            
+            const currentPlayerName = players[currentPlayer].name || currentPlayer;
+            let displayText = currentPlayerName;
+            
+            if (mustContinueWith) {
+                displayText += ' (must continue jumping!)';
+            } else if (gameActive && gameStarted) {
+                const availableCaptures = getAllCaptures(currentPlayer);
+                if (availableCaptures.length > 0) {
+                    // Count how many different pieces can capture
+                    const capturingPieces = new Set();
+                    availableCaptures.forEach(capture => {
+                        capturingPieces.add(`${capture.fromRow}-${capture.fromCol}`);
+                    });
+                    
+                    if (capturingPieces.size > 1) {
+                        displayText += ` (must capture! ${capturingPieces.size} pieces can capture - choose one)`;
+                    } else {
+                        displayText += ' (must capture!)';
+                    }
+                }
+            }
+            
+            document.getElementById('current-player').textContent = displayText;
+        }
+
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => handleCellClick(row, col));
+
+                    if (board[row][col]) {
+                        const piece = document.createElement('div');
+                        piece.className = `piece ${board[row][col].color} ${board[row][col].isKing ? 'king' : ''}`;
+                        piece.textContent = board[row][col].isKing ? '♔' : '';
+                        cell.appendChild(piece);
+                    }
+
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(row, col) {
+            if (!gameActive || !gameStarted) return;
+
+            const piece = board[row][col];
+
+            // If we must continue with a specific piece, only allow that piece
+            if (mustContinueWith) {
+                if (mustContinueWith.row === row && mustContinueWith.col === col) {
+                    selectPiece(row, col);
+                } else if (selectedPiece && isPossibleMove(row, col)) {
+                    makeMove(selectedPiece.row, selectedPiece.col, row, col);
+                }
+                return;
+            }
+
+            // Check if any captures are available for current player
+            const availableCaptures = getAllCaptures(currentPlayer);
+            
+            // Normal piece selection and movement
+            if (piece && piece.color === currentPlayer) {
+                // If captures are available, only allow pieces that can capture
+                if (availableCaptures.length > 0) {
+                    const canThisPieceCapture = availableCaptures.some(capture => 
+                        capture.fromRow === row && capture.fromCol === col);
+                    if (canThisPieceCapture) {
+                        selectPiece(row, col);
+                    }
+                } else {
+                    selectPiece(row, col);
+                }
+            } else if (selectedPiece && isPossibleMove(row, col)) {
+                makeMove(selectedPiece.row, selectedPiece.col, row, col);
+            }
+        }
+
+        function selectPiece(row, col) {
+            clearHighlights();
+            selectedPiece = { row, col };
+            possibleMoves = getPossibleMoves(row, col);
+            
+            // Highlight selected piece and possible moves
+            document.querySelector(`[data-row="${row}"][data-col="${col}"]`).classList.add('selected');
+            possibleMoves.forEach(move => {
+                const cell = document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
+                if (move.isCapture) {
+                    cell.classList.add('capture-move');
+                } else {
+                    cell.classList.add('possible-move');
+                }
+            });
+            
+            // Show status message if this piece has multiple capture options
+            const captures = possibleMoves.filter(move => move.isCapture);
+            if (captures.length > 1) {
+                const winnerMessage = document.getElementById('winner-message');
+                winnerMessage.textContent = `Choose your capture! ${captures.length} different capture moves available.`;
+                winnerMessage.classList.add('show');
+                setTimeout(() => {
+                    winnerMessage.classList.remove('show');
+                }, 2000);
+            }
+            
+            // If captures are available but not selected, highlight all pieces that can capture
+            if (!mustContinueWith) {
+                const availableCaptures = getAllCaptures(currentPlayer);
+                if (availableCaptures.length > 0) {
+                    highlightCapturablePieces(availableCaptures);
+                }
+            }
+        }
+
+        function highlightCapturablePieces(captures) {
+            const capturablePieces = new Set();
+            captures.forEach(capture => {
+                capturablePieces.add(`${capture.fromRow}-${capture.fromCol}`);
+            });
+            
+            capturablePieces.forEach(pieceKey => {
+                const [row, col] = pieceKey.split('-').map(Number);
+                if (!(selectedPiece && selectedPiece.row === row && selectedPiece.col === col)) {
+                    document.querySelector(`[data-row="${row}"][data-col="${col}"]`).classList.add('can-capture');
+                }
+            });
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.selected').forEach(cell => cell.classList.remove('selected'));
+            document.querySelectorAll('.possible-move').forEach(cell => cell.classList.remove('possible-move'));
+            document.querySelectorAll('.capture-move').forEach(cell => cell.classList.remove('capture-move'));
+            document.querySelectorAll('.can-capture').forEach(cell => cell.classList.remove('can-capture'));
+        }
+
+        function isPossibleMove(row, col) {
+            return possibleMoves.some(move => move.row === row && move.col === col);
+        }
+
+        function getPossibleMoves(row, col) {
+            const piece = board[row][col];
+            if (!piece) return [];
+
+            const moves = [];
+            
+            // Check for captures first (they are mandatory if available)
+            const captures = getCaptureMoves(row, col, piece);
+
+            // If captures are available, return only captures (mandatory)
+            if (captures.length > 0) {
+                return captures;
+            }
+
+            // If no captures available and not continuing a multi-jump, allow normal moves
+            if (!mustContinueWith) {
+                const normalMoves = getNormalMoves(row, col, piece);
+                moves.push(...normalMoves);
+            }
+
+            return moves;
+        }
+
+        function getCaptureMoves(row, col, piece) {
+            const captures = [];
+            
+            if (piece.isKing) {
+                // Flying king captures - can capture pieces at any distance
+                const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+                
+                directions.forEach(([dRow, dCol]) => {
+                    for (let distance = 1; distance < 8; distance++) {
+                        const targetRow = row + dRow * distance;
+                        const targetCol = col + dCol * distance;
+                        
+                        // Stop if we go off the board
+                        if (targetRow < 0 || targetRow >= 8 || targetCol < 0 || targetCol >= 8) break;
+                        
+                        const targetPiece = board[targetRow][targetCol];
+                        
+                        if (targetPiece) {
+                            // Found a piece - check if it's an enemy we can capture
+                            if (targetPiece.color !== piece.color) {
+                                // In International Draughts, king can land on any empty square beyond captured piece
+                                for (let landDistance = distance + 1; landDistance < 8; landDistance++) {
+                                    const landRow = row + dRow * landDistance;
+                                    const landCol = col + dCol * landDistance;
+                                    
+                                    // Stop if we go off the board
+                                    if (landRow < 0 || landRow >= 8 || landCol < 0 || landCol >= 8) break;
+                                    
+                                    if (!board[landRow][landCol]) {
+                                        // Empty square - valid landing spot
+                                        captures.push({
+                                            row: landRow,
+                                            col: landCol,
+                                            isCapture: true,
+                                            capturedRow: targetRow,
+                                            capturedCol: targetCol
+                                        });
+                                    } else {
+                                        // Another piece blocks further movement
+                                        break;
+                                    }
+                                }
+                            }
+                            // Stop searching in this direction (hit a piece)
+                            break;
+                        }
+                    }
+                });
+            } else {
+                // Regular piece captures - can capture in ALL directions (forward and backward)
+                // This is a key rule in International Draughts: men can capture backwards but only move forward
+                const captureDirections = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+                
+                captureDirections.forEach(([dRow, dCol]) => {
+                    const jumpRow = row + dRow * 2;
+                    const jumpCol = col + dCol * 2;
+                    const capturedRow = row + dRow;
+                    const capturedCol = col + dCol;
+
+                    if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 &&
+                        !board[jumpRow][jumpCol] && 
+                        board[capturedRow] && board[capturedRow][capturedCol] &&
+                        board[capturedRow][capturedCol].color !== piece.color) {
+                        captures.push({ 
+                            row: jumpRow, 
+                            col: jumpCol, 
+                            isCapture: true, 
+                            capturedRow, 
+                            capturedCol 
+                        });
+                    }
+                });
+            }
+            
+            return captures;
+        }
+
+        function getNormalMoves(row, col, piece) {
+            const moves = [];
+            
+            if (piece.isKing) {
+                // Flying king movement - can move any distance diagonally
+                const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+                
+                directions.forEach(([dRow, dCol]) => {
+                    for (let distance = 1; distance < 8; distance++) {
+                        const newRow = row + dRow * distance;
+                        const newCol = col + dCol * distance;
+                        
+                        // Stop if we go off the board
+                        if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8) break;
+                        
+                        if (!board[newRow][newCol]) {
+                            // Empty square - valid move
+                            moves.push({ row: newRow, col: newCol, isCapture: false });
+                        } else {
+                            // Piece blocks further movement
+                            break;
+                        }
+                    }
+                });
+            } else {
+                // Regular piece movement - only one square forward
+                const moveDirections = piece.color === 'red' ? [[1, -1], [1, 1]] : [[-1, -1], [-1, 1]];
+                
+                moveDirections.forEach(([dRow, dCol]) => {
+                    const newRow = row + dRow;
+                    const newCol = col + dCol;
+
+                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && !board[newRow][newCol]) {
+                        moves.push({ row: newRow, col: newCol, isCapture: false });
+                    }
+                });
+            }
+            
+            return moves;
+        }
+
+        function getAllCaptures(playerColor) {
+            const allCaptures = [];
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = board[row][col];
+                    if (piece && piece.color === playerColor) {
+                        const captures = getPossibleMoves(row, col).filter(move => move.isCapture);
+                        captures.forEach(capture => {
+                            allCaptures.push({
+                                fromRow: row,
+                                fromCol: col,
+                                toRow: capture.row,
+                                toCol: capture.col
+                            });
+                        });
+                    }
+                }
+            }
+            
+            return allCaptures;
+        }
+
+        function makeMove(fromRow, fromCol, toRow, toCol) {
+            const piece = board[fromRow][fromCol];
+            const move = possibleMoves.find(m => m.row === toRow && m.col === toCol);
+            
+            // Move the piece
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = null;
+            
+            let wasCapture = false;
+            
+            // Handle capture
+            if (move && move.isCapture) {
+                board[move.capturedRow][move.capturedCol] = null;
+                wasCapture = true;
+            }
+            
+            // Check for king promotion
+            let justBecameKing = false;
+            if ((piece.color === 'red' && toRow === 7) || (piece.color === 'white' && toRow === 0)) {
+                if (!piece.isKing) {
+                    piece.isKing = true;
+                    justBecameKing = true;
+                }
+            }
+            
+            clearHighlights();
+            selectedPiece = null;
+            
+            // Check if this piece can capture again (multi-jump)
+            // In International Draughts, newly crowned kings CAN continue jumping in the same turn
+            if (wasCapture) {
+                const additionalCaptures = getPossibleMoves(toRow, toCol).filter(m => m.isCapture);
+                if (additionalCaptures.length > 0) {
+                    // Must continue with this piece
+                    mustContinueWith = { row: toRow, col: toCol };
+                    createBoard();
+                    selectPiece(toRow, toCol);
+                    updatePlayerDisplays(); // Update display to show "must continue jumping!"
+                    
+                    // Show message about continued jumping options
+                    if (additionalCaptures.length > 1) {
+                        const winnerMessage = document.getElementById('winner-message');
+                        winnerMessage.textContent = `Multi-jump continues! ${additionalCaptures.length} more capture options available.`;
+                        winnerMessage.classList.add('show');
+                        setTimeout(() => {
+                            winnerMessage.classList.remove('show');
+                        }, 2000);
+                    }
+                    return; // Don't switch players yet
+                } else {
+                    // Capture sequence completed
+                    const playerName = players[currentPlayer].name || currentPlayer;
+                    const winnerMessage = document.getElementById('winner-message');
+                    winnerMessage.textContent = `${playerName} completed capture sequence!`;
+                    winnerMessage.classList.add('show');
+                    setTimeout(() => {
+                        winnerMessage.classList.remove('show');
+                    }, 1500);
+                }
+            }
+            
+            // No more captures possible, end turn
+            mustContinueWith = null;
+            createBoard();
+            
+            // Show king promotion message
+            if (justBecameKing) {
+                const playerName = players[currentPlayer].name || currentPlayer;
+                const winnerMessage = document.getElementById('winner-message');
+                winnerMessage.textContent = `👑 ${playerName} got a KING! Kings can move in all directions!`;
+                winnerMessage.classList.add('show');
+                setTimeout(() => {
+                    winnerMessage.classList.remove('show');
+                }, 3000);
+            }
+            
+            // Check for win
+            if (checkWin()) {
+                const playerName = players[currentPlayer].name || currentPlayer;
+                endGame(`🎉 ${playerName} wins!`);
+                winner = currentPlayer;
+                scores[currentPlayer]++;
+                saveScores();
+                updateScoreDisplay();
+                showSMSButton();
+            } else {
+                switchPlayer();
+            }
+        }
+
+        function checkWin() {
+            const opponent = currentPlayer === 'red' ? 'white' : 'red';
+            let opponentPieces = 0;
+            let opponentHasMoves = false;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] && board[row][col].color === opponent) {
+                        opponentPieces++;
+                        // Check if this piece has any legal moves
+                        const moves = getPossibleMovesForPiece(row, col, board[row][col]);
+                        if (moves.length > 0) {
+                            opponentHasMoves = true;
+                        }
+                    }
+                }
+            }
+            
+            // Win if opponent has no pieces OR no legal moves
+            return opponentPieces === 0 || !opponentHasMoves;
+        }
+
+        function getPossibleMovesForPiece(row, col, piece) {
+            const moves = [];
+            
+            // Check for captures first (they are mandatory if available)
+            const captures = getCaptureMoves(row, col, piece);
+
+            // If captures are available, return only captures (mandatory)
+            if (captures.length > 0) {
+                return captures;
+            }
+
+            // If no captures available, allow normal moves
+            const normalMoves = getNormalMoves(row, col, piece);
+            moves.push(...normalMoves);
+
+            return moves;
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'red' ? 'white' : 'red';
+            updatePlayerDisplays();
+            document.getElementById('current-player').style.color = currentPlayer === 'red' ? '#e74c3c' : '#3498db';
+        }
+
+        function endGame(message) {
+            gameActive = false;
+            const winnerMessage = document.getElementById('winner-message');
+            winnerMessage.textContent = message;
+            winnerMessage.classList.add('show');
+        }
+
+        function resetGame() {
+            board = Array(8).fill().map(() => Array(8).fill(null));
+            setupInitialBoard();
+            currentPlayer = 'white';
+            gameActive = true;
+            winner = null;
+            selectedPiece = null;
+            mustContinueWith = null;
+            possibleMoves = [];
+            
+            clearHighlights();
+            updatePlayerDisplays();
+            document.getElementById('current-player').style.color = '#3498db';
+            
+            const winnerMessage = document.getElementById('winner-message');
+            winnerMessage.classList.remove('show');
+            
+            document.getElementById('sms-btn').style.display = 'none';
+            document.getElementById('email-btn').style.display = 'none';
+            
+            createBoard();
+        }
+
+        // Save scores to localStorage
+        function saveScores() {
+            localStorage.setItem('internationalDraughtsScores', JSON.stringify(scores));
+        }
+
+        // Load scores from localStorage
+        function loadScores() {
+            const saved = localStorage.getItem('internationalDraughtsScores');
+            if (saved) {
+                scores = JSON.parse(saved);
+                updateScoreDisplay();
+            }
+        }
+
+        // Update score display
+        function updateScoreDisplay() {
+            document.getElementById('red-wins').textContent = scores.red;
+            document.getElementById('white-wins').textContent = scores.white;
+        }
+
+        // Show SMS and Email buttons
+        function showSMSButton() {
+            if (winner && players[winner].phone) {
+                document.getElementById('sms-btn').style.display = 'inline-block';
+            }
+            if (winner && players[winner].email) {
+                document.getElementById('email-btn').style.display = 'inline-block';
+            }
+        }
+
+        // Send congratulations SMS
+        function sendCongratulations() {
+            if (!winner || !players[winner].phone) {
+                alert('No phone number available for the winner!');
+                return;
+            }
+
+            const winnerName = players[winner].name;
+            const winnerPhone = players[winner].phone;
+            const message = `🎉 Congratulations ${winnerName}! You won the International Draughts game! Excellent strategy! 🏆`;
+            
+            const smsUrl = `sms:${winnerPhone}?body=${encodeURIComponent(message)}`;
+            alert(`📱 Opening SMS app to send:\n\nTo: ${winnerPhone}\nMessage: ${message}`);
+            window.open(smsUrl, '_blank');
+        }
+
+        // Send congratulations Email
+        function sendCongratulationsEmail() {
+            if (!winner || !players[winner].email) {
+                alert('No email address available for the winner!');
+                return;
+            }
+
+            const winnerName = players[winner].name;
+            const winnerEmail = players[winner].email;
+            const subject = `🎉 Congratulations on Your International Draughts Victory!`;
+            const body = `Dear ${winnerName},
+
+🎉 Congratulations! You have won the International Draughts game! 🏆
+
+Your strategic thinking and tactical skills with flying kings have led you to victory. Well played!
+
+Best regards,
+The International Draughts Game Team
+
+P.S. Ready for another challenge? Try the 5 in a Row game next!`;
+            
+            const mailtoUrl = `mailto:${winnerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            alert(`📧 Opening email client to send:\n\nTo: ${winnerEmail}\nSubject: ${subject}\n\nEmail body will contain congratulations message.`);
+            window.open(mailtoUrl, '_blank');
+        }
+
+        // Save players to localStorage
+        function savePlayers() {
+            localStorage.setItem('internationalDraughtsPlayers', JSON.stringify(players));
+        }
+
+        // Load players from localStorage
+        function loadPlayers() {
+            const saved = localStorage.getItem('internationalDraughtsPlayers');
+            if (saved) {
+                players = JSON.parse(saved);
+                document.getElementById('player-red-name').value = players.red.name || '';
+                document.getElementById('player-red-phone').value = players.red.phone || '';
+                document.getElementById('player-red-email').value = players.red.email || '';
+                document.getElementById('player-white-name').value = players.white.name || '';
+                document.getElementById('player-white-phone').value = players.white.phone || '';
+                document.getElementById('player-white-email').value = players.white.email || '';
+            }
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>

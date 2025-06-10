@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Collection</title>
+    <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Game Collection</h1>
+        <p class="subtitle">Choose your favorite strategy game and challenge your friends!</p>
+        
+        <div class="games-grid">
+            <a href="five-in-a-row.html" class="game-card" onclick="trackGameClick('5-in-a-row')">
+                <div class="game-icon">🎯</div>
+                <div class="game-title">5 in a Row</div>
+                <div class="game-description">
+                    Classic strategy game where you need to align 5 symbols in a row. 
+                    Perfect for testing your tactical skills!
+                </div>
+                <div class="game-players">👥 2 Players</div>
+            </a>
+            
+            <a href="checkers.html" class="game-card" onclick="trackGameClick('checkers')">
+                <div class="game-icon">🔴</div>
+                <div class="game-title">Checkers</div>
+                <div class="game-description">
+                    Traditional board game with jumping mechanics. 
+                    Capture all opponent pieces to win!
+                </div>
+                <div class="game-players">👥 2 Players</div>
+            </a>
+        </div>
+
+        <div class="stats">
+            <h3>📊 Gaming Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="total-games">0</div>
+                    <div class="stat-label">Total Games</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="favorite-game">-</div>
+                    <div class="stat-label">Favorite Game</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="last-played">Never</div>
+                    <div class="stat-label">Last Played</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🏆 Challenge your friends and become the ultimate strategy game champion!</p>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+</body>
+</html> 

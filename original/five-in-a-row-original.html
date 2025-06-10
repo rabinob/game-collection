@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5 in a Row Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .game-info {
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .current-player {
+            color: #e74c3c;
+        }
+
+        .current-player.o {
+            color: #3498db;
+        }
+
+        .game-board {
+            display: inline-grid;
+            grid-template-columns: repeat(15, 20px);
+            grid-template-rows: repeat(15, 20px);
+            gap: 0;
+            background-color: #34495e;
+            padding: 5px;
+            border-radius: 5px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            width: 20px;
+            height: 20px;
+            background-color: #ecf0f1;
+            border: 1px solid #34495e;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        .cell:hover:not(.taken) {
+            background-color: #bdc3c7;
+        }
+
+        .cell.x {
+            background-color: #e74c3c;
+            color: white;
+            cursor: default;
+        }
+
+        .cell.o {
+            background-color: #3498db;
+            color: white;
+            cursor: default;
+        }
+
+        .cell.winning {
+            background-color: #f1c40f !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .reset-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .winner-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .winner-message.show {
+            display: block;
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .score {
+            margin-top: 15px;
+            font-size: 16px;
+        }
+
+        .rules {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            text-align: left;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .rules h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .rules ul {
+            list-style: none;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        .rules li {
+            margin-bottom: 8px;
+            padding-left: 10px;
+            position: relative;
+        }
+
+        .rules li:before {
+            content: "•";
+            color: #3498db;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .player-setup {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .player-setup h3 {
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+
+        .player-inputs {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .player-input {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 200px;
+        }
+
+        .player-input label {
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+        }
+
+        .player-input input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .player-input input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .start-game-btn {
+            margin-top: 15px;
+            background-color: #27ae60;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .start-game-btn:hover {
+            background-color: #219a52;
+        }
+
+        .setup-btn {
+            background-color: #95a5a6;
+            color: white;
+            padding: 5px 10px;
+            margin-left: 15px;
+            font-size: 12px;
+        }
+
+        .setup-btn:hover {
+            background-color: #7f8c8d;
+        }
+
+        .sms-btn {
+            background-color: #9b59b6;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .sms-btn:hover {
+            background-color: #8e44ad;
+        }
+
+        .email-btn {
+            background-color: #e67e22;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .email-btn:hover {
+            background-color: #d35400;
+        }
+    </style>
+</head>
+<body>
+            <div class="container">
+        <div class="header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <a href="main.html" style="background: #95a5a6; color: white; padding: 8px 15px; border: none; border-radius: 5px; text-decoration: none; font-size: 14px;">← Back to Games</a>
+            <h1 style="flex-grow: 1; text-align: center; margin: 0;">🎯 5 in a Row</h1>
+            <div style="width: 120px;"></div>
+        </div>
+        
+        <div class="player-setup" id="player-setup">
+            <h3>👥 Player Setup</h3>
+            <div class="player-inputs">
+                <div class="player-input">
+                    <label>Player X (Red):</label>
+                    <input type="text" id="player-x-name" placeholder="Enter name" maxlength="20">
+                    <input type="tel" id="player-x-phone" placeholder="Phone number" maxlength="15">
+                    <input type="email" id="player-x-email" placeholder="Email address" maxlength="50">
+                </div>
+                <div class="player-input">
+                    <label>Player O (Blue):</label>
+                    <input type="text" id="player-o-name" placeholder="Enter name" maxlength="20">
+                    <input type="tel" id="player-o-phone" placeholder="Phone number" maxlength="15">
+                    <input type="email" id="player-o-email" placeholder="Email address" maxlength="50">
+                </div>
+            </div>
+            <button class="start-game-btn" onclick="startGame()">Start Game</button>
+        </div>
+
+        <div class="game-info" id="game-info" style="display: none;">
+            Current Player: <span id="current-player" class="current-player">X</span>
+            <button class="setup-btn" onclick="showSetup()">Change Players</button>
+        </div>
+
+        <div class="game-area" id="game-area" style="display: none;">
+            <div class="game-board" id="game-board"></div>
+
+            <div class="winner-message" id="winner-message"></div>
+
+            <div class="score">
+                <div><span id="player-x-display">X</span> Wins: <span id="x-wins">0</span> | <span id="player-o-display">O</span> Wins: <span id="o-wins">0</span> | Draws: <span id="draws">0</span></div>
+            </div>
+
+            <div class="controls">
+                <button class="reset-btn" onclick="resetGame()">Reset Game</button>
+                <button class="sms-btn" id="sms-btn" onclick="sendCongratulations()" style="display: none;">📱 Send SMS</button>
+                <button class="email-btn" id="email-btn" onclick="sendCongratulationsEmail()" style="display: none;">📧 Send Email</button>
+            </div>
+        </div>
+
+        <div class="rules">
+            <h3>📋 How to Play</h3>
+            <ul>
+                <li><strong>Objective:</strong> Be the first to get 5 of your symbols in a row</li>
+                <li><strong>Players:</strong> X (red) and O (blue) take turns</li>
+                <li><strong>Winning:</strong> Get 5 in a row horizontally, vertically, or diagonally</li>
+                <li><strong>How to play:</strong> Click any empty cell to place your symbol</li>
+                <li><strong>Game ends:</strong> When someone gets 5 in a row or the board is full (draw)</li>
+                <li><strong>Strategy:</strong> Block your opponent while building your own line of 5</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let board = [];
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let gameStarted = false;
+        let scores = { X: 0, O: 0, draws: 0 };
+        let players = {
+            X: { name: '', phone: '', email: '' },
+            O: { name: '', phone: '', email: '' }
+        };
+        let winner = null;
+
+        // Initialize the game
+        function initGame() {
+            board = Array(15).fill().map(() => Array(15).fill(''));
+            loadScores();
+            loadPlayers();
+        }
+
+        // Start game after player setup
+        function startGame() {
+            const playerXName = document.getElementById('player-x-name').value.trim();
+            const playerXPhone = document.getElementById('player-x-phone').value.trim();
+            const playerXEmail = document.getElementById('player-x-email').value.trim();
+            const playerOName = document.getElementById('player-o-name').value.trim();
+            const playerOPhone = document.getElementById('player-o-phone').value.trim();
+            const playerOEmail = document.getElementById('player-o-email').value.trim();
+
+            if (!playerXName || !playerOName) {
+                alert('Please enter names for both players!');
+                return;
+            }
+
+            players.X.name = playerXName;
+            players.X.phone = playerXPhone;
+            players.X.email = playerXEmail;
+            players.O.name = playerOName;
+            players.O.phone = playerOPhone;
+            players.O.email = playerOEmail;
+
+            savePlayers();
+            updatePlayerDisplays();
+
+            document.getElementById('player-setup').style.display = 'none';
+            document.getElementById('game-info').style.display = 'block';
+            document.getElementById('game-area').style.display = 'block';
+
+            gameStarted = true;
+            createBoard();
+        }
+
+        // Show setup screen
+        function showSetup() {
+            document.getElementById('player-setup').style.display = 'block';
+            document.getElementById('game-info').style.display = 'none';
+            document.getElementById('game-area').style.display = 'none';
+            gameStarted = false;
+        }
+
+        // Update player displays
+        function updatePlayerDisplays() {
+            document.getElementById('player-x-display').textContent = players.X.name || 'X';
+            document.getElementById('player-o-display').textContent = players.O.name || 'O';
+            
+            const currentPlayerName = players[currentPlayer].name || currentPlayer;
+            document.getElementById('current-player').textContent = currentPlayerName;
+        }
+
+        // Create the visual board
+        function createBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+
+            for (let row = 0; row < 15; row++) {
+                for (let col = 0; col < 15; col++) {
+                    const cell = document.createElement('button');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => makeMove(row, col));
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        // Make a move
+        function makeMove(row, col) {
+            if (!gameActive || !gameStarted || board[row][col] !== '') return;
+
+            board[row][col] = currentPlayer;
+            updateCell(row, col);
+
+            if (checkWin(row, col)) {
+                const playerName = players[currentPlayer].name || `Player ${currentPlayer}`;
+                endGame(`🎉 ${playerName} wins!`);
+                winner = currentPlayer;
+                scores[currentPlayer]++;
+                saveScores();
+                updateScoreDisplay();
+                showSMSButton();
+            } else if (checkDraw()) {
+                endGame("🤝 It's a draw!");
+                winner = null;
+                scores.draws++;
+                saveScores();
+                updateScoreDisplay();
+            } else {
+                switchPlayer();
+            }
+        }
+
+        // Update cell display
+        function updateCell(row, col) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.textContent = currentPlayer;
+            cell.className = `cell ${currentPlayer.toLowerCase()} taken`;
+        }
+
+        // Check for win
+        function checkWin(row, col) {
+            const directions = [
+                [0, 1],   // horizontal
+                [1, 0],   // vertical
+                [1, 1],   // diagonal \
+                [1, -1]   // diagonal /
+            ];
+
+            for (let [deltaRow, deltaCol] of directions) {
+                let count = 1;
+                let winningCells = [[row, col]];
+
+                // Check positive direction
+                let r = row + deltaRow;
+                let c = col + deltaCol;
+                while (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === currentPlayer) {
+                    winningCells.push([r, c]);
+                    count++;
+                    r += deltaRow;
+                    c += deltaCol;
+                }
+
+                // Check negative direction
+                r = row - deltaRow;
+                c = col - deltaCol;
+                while (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === currentPlayer) {
+                    winningCells.unshift([r, c]);
+                    count++;
+                    r -= deltaRow;
+                    c -= deltaCol;
+                }
+
+                if (count >= 5) {
+                    highlightWinningCells(winningCells);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Highlight winning cells
+        function highlightWinningCells(cells) {
+            cells.forEach(([row, col]) => {
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                cell.classList.add('winning');
+            });
+        }
+
+        // Check for draw
+        function checkDraw() {
+            return board.every(row => row.every(cell => cell !== ''));
+        }
+
+        // Switch player
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updatePlayerDisplays();
+            const playerElement = document.getElementById('current-player');
+            playerElement.className = `current-player ${currentPlayer.toLowerCase()}`;
+        }
+
+        // End game
+        function endGame(message) {
+            gameActive = false;
+            const winnerMessage = document.getElementById('winner-message');
+            winnerMessage.textContent = message;
+            winnerMessage.classList.add('show');
+        }
+
+        // Reset game
+        function resetGame() {
+            board = Array(15).fill().map(() => Array(15).fill(''));
+            currentPlayer = 'X';
+            gameActive = true;
+            winner = null;
+            
+            updatePlayerDisplays();
+            const playerElement = document.getElementById('current-player');
+            playerElement.className = 'current-player';
+            
+            const winnerMessage = document.getElementById('winner-message');
+            winnerMessage.classList.remove('show');
+            
+            document.getElementById('sms-btn').style.display = 'none';
+            document.getElementById('email-btn').style.display = 'none';
+            
+            createBoard();
+        }
+
+        // Save scores to localStorage
+        function saveScores() {
+            localStorage.setItem('fiveInARowScores', JSON.stringify(scores));
+        }
+
+        // Load scores from localStorage
+        function loadScores() {
+            const saved = localStorage.getItem('fiveInARowScores');
+            if (saved) {
+                scores = JSON.parse(saved);
+                updateScoreDisplay();
+            }
+        }
+
+        // Update score display
+        function updateScoreDisplay() {
+            document.getElementById('x-wins').textContent = scores.X;
+            document.getElementById('o-wins').textContent = scores.O;
+            document.getElementById('draws').textContent = scores.draws;
+        }
+
+        // Show SMS and Email buttons
+        function showSMSButton() {
+            if (winner && players[winner].phone) {
+                document.getElementById('sms-btn').style.display = 'inline-block';
+            }
+            if (winner && players[winner].email) {
+                document.getElementById('email-btn').style.display = 'inline-block';
+            }
+        }
+
+        // Send congratulations SMS
+        function sendCongratulations() {
+            if (!winner || !players[winner].phone) {
+                alert('No phone number available for the winner!');
+                return;
+            }
+
+            const winnerName = players[winner].name;
+            const winnerPhone = players[winner].phone;
+            const message = `🎉 Congratulations ${winnerName}! You won the 5 in a Row game! Great job! 🏆`;
+            
+            // Create SMS URL (opens default SMS app)
+            const smsUrl = `sms:${winnerPhone}?body=${encodeURIComponent(message)}`;
+            
+            // Show the message that would be sent
+            alert(`📱 Opening SMS app to send:\n\nTo: ${winnerPhone}\nMessage: ${message}`);
+            
+            // Open SMS app (works on mobile devices)
+            window.open(smsUrl, '_blank');
+        }
+
+        // Send congratulations Email
+        function sendCongratulationsEmail() {
+            if (!winner || !players[winner].email) {
+                alert('No email address available for the winner!');
+                return;
+            }
+
+            const winnerName = players[winner].name;
+            const winnerEmail = players[winner].email;
+            const subject = `🎉 Congratulations on Your 5 in a Row Victory!`;
+            const body = `Dear ${winnerName},
+
+🎉 Congratulations! You have won the 5 in a Row game! 🏆
+
+Your strategic thinking and skill have paid off. Well played!
+
+Best regards,
+The 5 in a Row Game Team
+
+P.S. Ready for another round? Challenge your opponent to a rematch!`;
+            
+            // Create mailto URL (opens default email client)
+            const mailtoUrl = `mailto:${winnerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            // Show the message that would be sent
+            alert(`📧 Opening email client to send:\n\nTo: ${winnerEmail}\nSubject: ${subject}\n\nEmail body will contain congratulations message.`);
+            
+            // Open email client
+            window.open(mailtoUrl, '_blank');
+        }
+
+        // Save players to localStorage
+        function savePlayers() {
+            localStorage.setItem('fiveInARowPlayers', JSON.stringify(players));
+        }
+
+        // Load players from localStorage
+        function loadPlayers() {
+            const saved = localStorage.getItem('fiveInARowPlayers');
+            if (saved) {
+                players = JSON.parse(saved);
+                document.getElementById('player-x-name').value = players.X.name || '';
+                document.getElementById('player-x-phone').value = players.X.phone || '';
+                document.getElementById('player-x-email').value = players.X.email || '';
+                document.getElementById('player-o-name').value = players.O.name || '';
+                document.getElementById('player-o-phone').value = players.O.phone || '';
+                document.getElementById('player-o-email').value = players.O.email || '';
+            }
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html> 
