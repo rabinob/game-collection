@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preference</title>
+    <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+    <div class="container">
+        <a href="main.html" class="back-link">← Back to Game Collection</a>
+        <h1>🃏 Preference</h1>
+        <div class="subtitle">Classic European card game of skill, bidding, and strategy.</div>
+        <div class="player-setup">
+            <h2>Player Setup</h2>
+            <form id="player-form">
+                <div><input type="text" id="player1-name" placeholder="Your Name" required></div>
+                <div><input type="text" id="player1-phone" placeholder="Your Phone (optional)"></div>
+                <div><input type="email" id="player1-email" placeholder="Your Email (optional)"></div>
+                <div class="ai-info"><strong>AI Player 1:</strong> Alex (AI)</div>
+                <div class="ai-info"><strong>AI Player 2:</strong> Sam (AI)</div>
+                <button type="submit">Start Game</button>
+            </form>
+        </div>
+        <div id="game-area" style="display:none;">
+            <!-- Game UI will be rendered here by JS -->
+        </div>
+        <div class="rules">
+            <h2>How to Play Preference</h2>
+            <ul>
+                <li>Preference is a 3-player trick-taking card game popular in Central and Eastern Europe.</li>
+                <li>Players bid for the right to choose the trump suit and play the hand.</li>
+                <li>The game involves skillful play, strategic bidding, and careful management of tricks.</li>
+                <li>For full rules, see <a href="https://www.pagat.com/preference/" target="_blank">Pagat: Preference Rules</a>.</li>
+            </ul>
+        </div>
+    </div>
+    <script src="../js/preference.js"></script>
+</body>
+</html> 
