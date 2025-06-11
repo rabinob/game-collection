@@ -5,14 +5,15 @@ class CheckersAI {
         this.maxDepth = this.getMaxDepth(difficulty);
         this.aiPlayer = 'white';
         this.humanPlayer = 'red';
+        this.evaluationCache = new Map(); // Cache for position evaluations
     }
 
     getMaxDepth(difficulty) {
         switch (difficulty) {
-            case 'easy': return 3;
-            case 'medium': return 5;
-            case 'hard': return 7;
-            default: return 5;
+            case 'easy': return 2;
+            case 'medium': return 3; // Reduced from 5 to 3
+            case 'hard': return 4;   // Reduced from 7 to 4
+            default: return 3;
         }
     }
 
@@ -37,13 +38,24 @@ class CheckersAI {
             return availableMoves[0];
         }
 
+        // Clear cache for new search
+        this.evaluationCache.clear();
+
         // Use minimax for strategic move
         const bestMove = this.minimax(board, this.maxDepth, -Infinity, Infinity, true);
         return bestMove.move || availableMoves[0];
     }
 
-    // Minimax algorithm with alpha-beta pruning
+    // Minimax algorithm with alpha-beta pruning and caching
     minimax(board, depth, alpha, beta, isMaximizing) {
+        const boardKey = this.getBoardKey(board);
+        if (this.evaluationCache.has(boardKey)) {
+            const cached = this.evaluationCache.get(boardKey);
+            if (cached.depth >= depth) {
+                return cached.result;
+            }
+        }
+
         const score = this.evaluateBoard(board);
         
         // Terminal conditions
@@ -59,12 +71,15 @@ class CheckersAI {
             return { score: isMaximizing ? -10000 : 10000 };
         }
 
+        // Limit moves for performance in complex positions
+        const limitedMoves = availableMoves.slice(0, Math.min(availableMoves.length, 15));
+        
         let bestMove = null;
 
         if (isMaximizing) {
             let maxScore = -Infinity;
             
-            for (const move of availableMoves) {
+            for (const move of limitedMoves) {
                 // Make move
                 const newBoard = this.makeMove(board, move);
                 
@@ -79,11 +94,13 @@ class CheckersAI {
                 if (beta <= alpha) break; // Alpha-beta pruning
             }
             
-            return { score: maxScore, move: bestMove };
+            const finalResult = { score: maxScore, move: bestMove };
+            this.evaluationCache.set(boardKey, { depth, result: finalResult });
+            return finalResult;
         } else {
             let minScore = Infinity;
             
-            for (const move of availableMoves) {
+            for (const move of limitedMoves) {
                 // Make move
                 const newBoard = this.makeMove(board, move);
                 
@@ -98,8 +115,17 @@ class CheckersAI {
                 if (beta <= alpha) break; // Alpha-beta pruning
             }
             
-            return { score: minScore, move: bestMove };
+            const finalResult = { score: minScore, move: bestMove };
+            this.evaluationCache.set(boardKey, { depth, result: finalResult });
+            return finalResult;
         }
+    }
+
+    // Generate board key for caching
+    getBoardKey(board) {
+        return board.map(row => 
+            row.map(cell => cell ? `${cell.color[0]}${cell.isKing ? 'K' : 'R'}` : 'E').join('')
+        ).join('|');
     }
 
     // Make a move and return new board state
@@ -192,11 +218,11 @@ class CheckersAI {
         const captures = [];
         
         if (piece.isKing) {
-            // Flying king captures
+            // Flying king captures (limited range for performance)
             const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
             
             directions.forEach(([dRow, dCol]) => {
-                for (let distance = 1; distance < 8; distance++) {
+                for (let distance = 1; distance < 6; distance++) { // Reduced from 8 to 6
                     const targetRow = row + dRow * distance;
                     const targetCol = col + dCol * distance;
                     
@@ -206,8 +232,8 @@ class CheckersAI {
                     
                     if (targetPiece) {
                         if (targetPiece.color !== piece.color) {
-                            // Found enemy piece, check for landing spots
-                            for (let landDistance = distance + 1; landDistance < 8; landDistance++) {
+                            // Found enemy piece, check for landing spots (limited)
+                            for (let landDistance = distance + 1; landDistance < Math.min(8, distance + 4); landDistance++) {
                                 const landRow = row + dRow * landDistance;
                                 const landCol = col + dCol * landDistance;
                                 
@@ -266,11 +292,11 @@ class CheckersAI {
         const moves = [];
         
         if (piece.isKing) {
-            // Flying king movement
+            // Flying king movement (limited range for performance)
             const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
             
             directions.forEach(([dRow, dCol]) => {
-                for (let distance = 1; distance < 8; distance++) {
+                for (let distance = 1; distance < 6; distance++) { // Reduced from 8 to 6
                     const newRow = row + dRow * distance;
                     const newCol = col + dCol * distance;
                     
@@ -350,11 +376,6 @@ class CheckersAI {
         
         // Bonus for kings
         score += (aiKings - humanKings) * 5;
-        
-        // Mobility bonus
-        const aiMobility = this.getAllMovesForPlayer(board, this.aiPlayer).length;
-        const humanMobility = this.getAllMovesForPlayer(board, this.humanPlayer).length;
-        score += (aiMobility - humanMobility) * 0.1;
         
         return score;
     }

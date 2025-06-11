@@ -766,9 +766,9 @@ function makeAiMove() {
         cell.style.pointerEvents = 'none';
     });
     
-    // AI thinking delay for better UX
-    const thinkingTime = aiDifficulty === 'easy' ? 800 : 
-                        aiDifficulty === 'medium' ? 1500 : 2500;
+    // Reduced AI thinking delays for better responsiveness
+    const thinkingTime = aiDifficulty === 'easy' ? 500 : 
+                        aiDifficulty === 'medium' ? 800 : 1500;
     
     setTimeout(() => {
         const aiMove = ai.makeMove(board);

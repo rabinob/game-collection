@@ -5,14 +5,15 @@ class FiveInARowAI {
         this.maxDepth = this.getMaxDepth(difficulty);
         this.aiPlayer = 'O';
         this.humanPlayer = 'X';
+        this.evaluationCache = new Map(); // Cache for position evaluations
     }
 
     getMaxDepth(difficulty) {
         switch (difficulty) {
             case 'easy': return 2;
-            case 'medium': return 4;
-            case 'hard': return 6;
-            default: return 4;
+            case 'medium': return 3;  // Reduced from 4 to 3
+            case 'hard': return 4;    // Reduced from 6 to 4
+            default: return 3;
         }
     }
 
@@ -33,13 +34,24 @@ class FiveInARowAI {
         const blockMove = this.findWinningMove(board, this.humanPlayer);
         if (blockMove) return blockMove;
 
-        // Use minimax for strategic move
-        const bestMove = this.minimax(board, this.maxDepth, -Infinity, Infinity, true);
+        // Clear cache for new search
+        this.evaluationCache.clear();
+
+        // Use minimax for strategic move with move ordering
+        const bestMove = this.minimaxWithOrdering(board, this.maxDepth, -Infinity, Infinity, true);
         return bestMove.move || this.makeRandomMove(board);
     }
 
-    // Minimax algorithm with alpha-beta pruning
-    minimax(board, depth, alpha, beta, isMaximizing) {
+    // Minimax with move ordering for better pruning
+    minimaxWithOrdering(board, depth, alpha, beta, isMaximizing) {
+        const boardKey = this.getBoardKey(board);
+        if (this.evaluationCache.has(boardKey)) {
+            const cached = this.evaluationCache.get(boardKey);
+            if (cached.depth >= depth) {
+                return cached.result;
+            }
+        }
+
         const score = this.evaluateBoard(board);
         
         // Terminal conditions
@@ -52,16 +64,19 @@ class FiveInARowAI {
             return { score: 0 };
         }
 
+        // Order moves for better alpha-beta pruning
+        const orderedMoves = this.orderMoves(board, availableMoves, isMaximizing);
+        
         let bestMove = null;
 
         if (isMaximizing) {
             let maxScore = -Infinity;
             
-            for (const move of availableMoves) {
+            for (const move of orderedMoves) {
                 // Make move
                 board[move.row][move.col] = this.aiPlayer;
                 
-                const result = this.minimax(board, depth - 1, alpha, beta, false);
+                const result = this.minimaxWithOrdering(board, depth - 1, alpha, beta, false);
                 
                 // Undo move
                 board[move.row][move.col] = '';
@@ -75,15 +90,17 @@ class FiveInARowAI {
                 if (beta <= alpha) break; // Alpha-beta pruning
             }
             
-            return { score: maxScore, move: bestMove };
+            const finalResult = { score: maxScore, move: bestMove };
+            this.evaluationCache.set(boardKey, { depth, result: finalResult });
+            return finalResult;
         } else {
             let minScore = Infinity;
             
-            for (const move of availableMoves) {
+            for (const move of orderedMoves) {
                 // Make move
                 board[move.row][move.col] = this.humanPlayer;
                 
-                const result = this.minimax(board, depth - 1, alpha, beta, true);
+                const result = this.minimaxWithOrdering(board, depth - 1, alpha, beta, true);
                 
                 // Undo move
                 board[move.row][move.col] = '';
@@ -97,23 +114,95 @@ class FiveInARowAI {
                 if (beta <= alpha) break; // Alpha-beta pruning
             }
             
-            return { score: minScore, move: bestMove };
+            const finalResult = { score: minScore, move: bestMove };
+            this.evaluationCache.set(boardKey, { depth, result: finalResult });
+            return finalResult;
         }
     }
 
-    // Evaluate board position
+    // Order moves for better alpha-beta pruning
+    orderMoves(board, moves, isMaximizing) {
+        const player = isMaximizing ? this.aiPlayer : this.humanPlayer;
+        
+        // Score each move quickly
+        const scoredMoves = moves.map(move => {
+            board[move.row][move.col] = player;
+            const score = this.quickEvaluate(board, move.row, move.col);
+            board[move.row][move.col] = '';
+            return { move, score };
+        });
+
+        // Sort moves by score (best first for better pruning)
+        scoredMoves.sort((a, b) => isMaximizing ? b.score - a.score : a.score - b.score);
+        
+        return scoredMoves.map(item => item.move);
+    }
+
+    // Quick evaluation for move ordering (faster than full board evaluation)
+    quickEvaluate(board, row, col) {
+        const player = board[row][col];
+        let score = 0;
+        
+        const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+        
+        for (const [dRow, dCol] of directions) {
+            let count = 1;
+            let blocked = 0;
+            
+            // Check positive direction
+            for (let i = 1; i < 5; i++) {
+                const r = row + dRow * i;
+                const c = col + dCol * i;
+                if (r < 0 || r >= 15 || c < 0 || c >= 15) { blocked++; break; }
+                if (board[r][c] === player) count++;
+                else if (board[r][c] !== '') { blocked++; break; }
+                else break;
+            }
+            
+            // Check negative direction
+            for (let i = 1; i < 5; i++) {
+                const r = row - dRow * i;
+                const c = col - dCol * i;
+                if (r < 0 || r >= 15 || c < 0 || c >= 15) { blocked++; break; }
+                if (board[r][c] === player) count++;
+                else if (board[r][c] !== '') { blocked++; break; }
+                else break;
+            }
+            
+            if (blocked < 2) { // Not blocked on both ends
+                if (count >= 4) score += 1000;
+                else if (count >= 3) score += 100;
+                else if (count >= 2) score += 10;
+                else score += 1;
+            }
+        }
+        
+        return player === this.aiPlayer ? score : -score;
+    }
+
+    // Generate board key for caching
+    getBoardKey(board) {
+        return board.map(row => row.join('')).join('|');
+    }
+
+    // Optimized board evaluation
     evaluateBoard(board) {
         let score = 0;
         
-        // Check all possible lines of 5
+        // Only check lines that contain at least one piece
         for (let row = 0; row < 15; row++) {
             for (let col = 0; col < 15; col++) {
-                // Check all 4 directions from this position
-                const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
-                
-                for (const [dRow, dCol] of directions) {
-                    const lineScore = this.evaluateLine(board, row, col, dRow, dCol);
-                    score += lineScore;
+                if (board[row][col] !== '') {
+                    // Check all 4 directions from pieces only
+                    const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+                    
+                    for (const [dRow, dCol] of directions) {
+                        // Only evaluate if this is the starting position of a potential line
+                        if (this.isLineStart(board, row, col, dRow, dCol)) {
+                            const lineScore = this.evaluateLine(board, row, col, dRow, dCol);
+                            score += lineScore;
+                        }
+                    }
                 }
             }
         }
@@ -121,7 +210,20 @@ class FiveInARowAI {
         return score;
     }
 
-    // Evaluate a line of 5 positions
+    // Check if this position is the start of a line in this direction
+    isLineStart(board, row, col, dRow, dCol) {
+        const prevRow = row - dRow;
+        const prevCol = col - dCol;
+        
+        // If previous position is out of bounds or different player, this is a line start
+        if (prevRow < 0 || prevRow >= 15 || prevCol < 0 || prevCol >= 15) {
+            return true;
+        }
+        
+        return board[prevRow][prevCol] !== board[row][col];
+    }
+
+    // Evaluate a line of 5 positions (optimized)
     evaluateLine(board, startRow, startCol, dRow, dCol) {
         let aiCount = 0;
         let humanCount = 0;
@@ -212,38 +314,38 @@ class FiveInARowAI {
         return false;
     }
 
-    // Get all available moves
+    // Optimized move generation
     getAvailableMoves(board) {
-        const moves = [];
-        
         // Optimize: only consider moves near existing pieces
         const nearExisting = this.getMovesNearExisting(board);
         if (nearExisting.length > 0) {
-            return nearExisting;
+            // Limit moves to prevent explosion in late game
+            return nearExisting.slice(0, Math.min(nearExisting.length, 20));
         }
         
         // If no pieces on board, start in center area
+        const centerMoves = [];
         for (let row = 6; row < 9; row++) {
             for (let col = 6; col < 9; col++) {
                 if (board[row][col] === '') {
-                    moves.push({ row, col });
+                    centerMoves.push({ row, col });
                 }
             }
         }
         
-        return moves;
+        return centerMoves;
     }
 
-    // Get moves near existing pieces (optimization)
+    // Get moves near existing pieces (optimized)
     getMovesNearExisting(board) {
         const moves = new Set();
         
         for (let row = 0; row < 15; row++) {
             for (let col = 0; col < 15; col++) {
                 if (board[row][col] !== '') {
-                    // Add adjacent empty cells
-                    for (let dr = -2; dr <= 2; dr++) {
-                        for (let dc = -2; dc <= 2; dc++) {
+                    // Add adjacent empty cells (reduced range for performance)
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
                             const newRow = row + dr;
                             const newCol = col + dc;
                             
