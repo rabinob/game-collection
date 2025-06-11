@@ -100,7 +100,8 @@ class CheckersAI {
     
     // Perform a move on a deep copy of the board for simulation
     simulateMove(board, move) {
-        const newBoard = JSON.parse(JSON.stringify(board)); // Deep copy
+        // Fast deep copy, which is critical for performance
+        const newBoard = board.map(row => row.map(cell => cell ? {...cell} : null));
 
         const piece = newBoard[move.fromRow][move.fromCol];
         newBoard[move.toRow][move.toCol] = piece;
@@ -190,7 +191,9 @@ class CheckersAI {
                 const capturedCol = col + dCol;
                 const landRow = row + dRow * 2;
                 const landCol = col + dCol * 2;
+                // Added bounds check for captured piece to prevent crashing error
                 if (landRow >= 0 && landRow < 8 && landCol >= 0 && landCol < 8 &&
+                    capturedRow >= 0 && capturedRow < 8 && capturedCol >= 0 && capturedCol < 8 &&
                     !board[landRow][landCol] && board[capturedRow][capturedCol] && board[capturedRow][capturedCol].color !== piece.color) {
                     captures.push({ fromRow: row, fromCol: col, toRow: landRow, toCol: landCol, isCapture: true, capturedPieces: [{ row: capturedRow, col: capturedCol }] });
                 }

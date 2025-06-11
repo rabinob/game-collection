@@ -380,7 +380,6 @@ function getCaptureMoves(row, col, piece) {
         });
     } else {
         // Regular piece captures - can capture in ALL directions (forward and backward)
-        // This is a key rule in International Draughts: men can capture backwards but only move forward
         const captureDirections = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
         
         captureDirections.forEach(([dRow, dCol]) => {
@@ -389,9 +388,11 @@ function getCaptureMoves(row, col, piece) {
             const capturedRow = row + dRow;
             const capturedCol = col + dCol;
 
+            // Added bounds check for captured piece to prevent crashing error
             if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 &&
+                capturedRow >= 0 && capturedRow < 8 && capturedCol >= 0 && capturedCol < 8 &&
                 !board[jumpRow][jumpCol] && 
-                board[capturedRow] && board[capturedRow][capturedCol] &&
+                board[capturedRow][capturedCol] &&
                 board[capturedRow][capturedCol].color !== piece.color) {
                 captures.push({ 
                     row: jumpRow, 
