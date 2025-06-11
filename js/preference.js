@@ -1,5 +1,8 @@
 // Preference Game JS
 
+const SUIT_ORDER = ['♠', '♥', '♦', '♣'];
+const RANK_ORDER = ['A', 'K', 'Q', 'J', '10', '9', '8', '7'];
+
 function createDeck() {
     // 32-card deck: 7,8,9,10,J,Q,K,A in each suit
     const suits = ['♠', '♥', '♦', '♣'];
@@ -29,8 +32,17 @@ function deal(deck) {
     };
 }
 
+function sortCards(cards) {
+    return cards.slice().sort((a, b) => {
+        const suitDiff = SUIT_ORDER.indexOf(a.suit) - SUIT_ORDER.indexOf(b.suit);
+        if (suitDiff !== 0) return suitDiff;
+        return RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank);
+    });
+}
+
 function renderHand(hand) {
-    return hand.map(card => `<span class="card">${card.rank}${card.suit}</span>`).join(' ');
+    const sorted = sortCards(hand);
+    return sorted.map(card => `<span class="card" data-suit="${card.suit}">${card.rank}${card.suit}</span>`).join(' ');
 }
 
 function renderBidding(players, currentBidder, bids, isHuman) {
@@ -52,38 +64,15 @@ function renderBidding(players, currentBidder, bids, isHuman) {
     return html;
 }
 
-// Persistent scores
-function getScores() {
-    let scores = JSON.parse(localStorage.getItem('preferenceScores') || '[0,0,0]');
-    if (!Array.isArray(scores) || scores.length !== 3) scores = [0,0,0];
-    return scores;
-}
-function setScores(scores) {
-    localStorage.setItem('preferenceScores', JSON.stringify(scores));
-}
-function resetScores() {
-    setScores([0,0,0]);
-    renderScores();
-}
-function renderScores() {
-    const scores = getScores();
-    let html = '<div class="cumulative-scores"><strong>Cumulative Scores:</strong> ' + players.map((p, i) => `${p.name}: ${scores[i]}`).join(' | ') + '</div>';
-    html += '<button id="reset-scores-btn">Reset Scores</button>';
-    if (document.getElementById('scores-area')) {
-        document.getElementById('scores-area').innerHTML = html;
-    } else {
-        const div = document.createElement('div');
-        div.id = 'scores-area';
-        div.innerHTML = html;
-        gameArea.parentNode.insertBefore(div, gameArea);
-    }
-    document.getElementById('reset-scores-btn').onclick = resetScores;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('player-form');
     const gameArea = document.getElementById('game-area');
     let players = [];
+    // Try to load players from localStorage if available
+    try {
+        const stored = JSON.parse(localStorage.getItem('preferencePlayers'));
+        if (Array.isArray(stored) && stored.length === 3) players = stored;
+    } catch (e) {}
     let hands = [];
     let talon = [];
     let bids = [undefined, undefined, undefined];
@@ -92,6 +81,44 @@ document.addEventListener('DOMContentLoaded', function() {
     let bidValue = 0;
     let bidOrder = [0, 1, 2];
     let contract = 0;
+
+    // Persistent scores (moved inside to access players)
+    function getScores() {
+        let scores = JSON.parse(localStorage.getItem('preferenceScores') || '[0,0,0]');
+        if (!Array.isArray(scores) || scores.length !== 3) scores = [0,0,0];
+        return scores;
+    }
+    function setScores(scores) {
+        localStorage.setItem('preferenceScores', JSON.stringify(scores));
+    }
+    function resetScores() {
+        setScores([0,0,0]);
+        renderScores();
+    }
+    function renderScores() {
+        const scoresArea = document.getElementById('scores-area');
+        if (!Array.isArray(players) || players.length !== 3 || !players.every(p => p && p.name)) {
+            if (scoresArea) {
+                scoresArea.style.display = 'none';
+                scoresArea.innerHTML = '';
+            }
+            return;
+        }
+        const scores = getScores();
+        let html = '<div class="cumulative-scores"><strong>Cumulative Scores:</strong> ' + players.map((p, i) => `${p.name}: ${scores[i]}`).join(' | ') + '</div>';
+        html += '<button id="reset-scores-btn">Reset Scores</button>';
+        if (scoresArea) {
+            scoresArea.innerHTML = html;
+            scoresArea.style.display = 'block';
+        } else {
+            const div = document.createElement('div');
+            div.id = 'scores-area';
+            div.innerHTML = html;
+            div.style.display = 'block';
+            gameArea.parentNode.insertBefore(div, gameArea);
+        }
+        document.getElementById('reset-scores-btn').onclick = resetScores;
+    }
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -112,6 +139,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function startGame() {
+        // Always reload players from localStorage if not valid
+        if (!Array.isArray(players) || players.length !== 3 || !players.every(p => p && p.name)) {
+            try {
+                const stored = JSON.parse(localStorage.getItem('preferencePlayers'));
+                if (Array.isArray(stored) && stored.length === 3) players = stored;
+            } catch (e) {}
+        }
         // Deck, shuffle, deal
         let deck = shuffle(createDeck());
         const dealResult = deal(deck);
@@ -122,7 +156,9 @@ document.addEventListener('DOMContentLoaded', function() {
         bidValue = 0;
         currentBidder = 0;
         bidOrder = [0, 1, 2];
-        renderScores();
+        if (Array.isArray(players) && players.length === 3 && players.every(p => p && p.name)) {
+            renderScores();
+        }
         gameArea.style.display = 'block';
         renderGame();
     }
@@ -206,10 +242,68 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '<h3>Bidding Complete</h3>';
         html += `<p>Winner: <strong>${players[winner].name}</strong> with bid: <strong>${bids[winner]}</strong></p>`;
         html += `<p>${players[winner].name} takes the talon and becomes declarer.</p>`;
-        html += '<button id="start-play-btn">Start Trick-Taking Phase</button>';
-        gameArea.innerHTML = html;
-        document.getElementById('start-play-btn').onclick = function() {
-            startPlay(winner);
+        if (!players[winner].isAI) {
+            // Real player discards
+            hands[winner] = hands[winner].concat(talon);
+            html += '<div class="discard-section"><h4>Select 2 cards to discard:</h4>';
+            html += renderDiscardHand(hands[winner]);
+            html += '<div><button id="confirm-discard-btn" disabled>Confirm Discards</button></div></div>';
+            gameArea.innerHTML = html;
+            setupDiscardUI(winner);
+        } else {
+            // AI discards 2 random cards
+            hands[winner] = hands[winner].concat(talon);
+            for (let i = 0; i < 2; i++) {
+                hands[winner].splice(Math.floor(Math.random() * hands[winner].length), 1);
+            }
+            html += '<button id="start-play-btn">Start Trick-Taking Phase</button>';
+            gameArea.innerHTML = html;
+            document.getElementById('start-play-btn').onclick = function() {
+                startPlay(winner);
+            };
+        }
+    }
+
+    function renderDiscardHand(hand, selectedIdxs = []) {
+        const sorted = sortCards(hand).map(card => ({
+            card,
+            origIdx: hand.indexOf(card)
+        }));
+        return '<div class="discard-hand">' + sorted.map(({card, origIdx}) => {
+            const isSelected = selectedIdxs.includes(origIdx);
+            return `<span class="card${isSelected ? ' selected' : ''}" data-idx="${origIdx}" data-suit="${card.suit}" style="cursor:pointer;">${card.rank}${card.suit}</span>`;
+        }).join(' ') + '</div>';
+    }
+
+    function setupDiscardUI(winnerIdx) {
+        let selected = [];
+        function updateUI() {
+            const sorted = sortCards(hands[winnerIdx]).map(card => ({
+                card,
+                origIdx: hands[winnerIdx].indexOf(card)
+            }));
+            document.querySelector('.discard-hand').innerHTML = sorted.map(({card, origIdx}) => {
+                const isSelected = selected.includes(origIdx);
+                return `<span class="card${isSelected ? ' selected' : ''}" data-idx="${origIdx}" data-suit="${card.suit}" style="cursor:pointer;">${card.rank}${card.suit}</span>`;
+            }).join(' ');
+            document.getElementById('confirm-discard-btn').disabled = (selected.length !== 2);
+            document.querySelectorAll('.discard-hand .card').forEach(el => {
+                el.onclick = function() {
+                    const idx = parseInt(el.getAttribute('data-idx'));
+                    if (selected.includes(idx)) {
+                        selected = selected.filter(i => i !== idx);
+                    } else if (selected.length < 2) {
+                        selected.push(idx);
+                    }
+                    updateUI();
+                };
+            });
+        }
+        updateUI();
+        document.getElementById('confirm-discard-btn').onclick = function() {
+            // Remove selected cards by index, highest first
+            selected.sort((a,b) => b-a).forEach(idx => hands[winnerIdx].splice(idx, 1));
+            startPlay(winnerIdx);
         };
     }
 
@@ -240,16 +334,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderTrick() {
-        let html = '<div class="hands">';
+        let html = '<div class="playing-surface">';
+        html += '<div class="hands-area">';
         players.forEach((p, i) => {
-            html += `<div><strong>${p.name}:</strong> ${renderHand(hands[i])}</div>`;
+            html += `<div class="player-hand"><strong>${p.name}:</strong> ${renderHand(hands[i])}</div>`;
         });
         html += '</div>';
-        html += `<div class="trick-status"><strong>Trick:</strong> ${trick.map(x => x ? `${players[x.player].name}: <span class='card'>${x.card.rank}${x.card.suit}</span>` : '').join(' | ')}</div>`;
-        html += `<div class="trick-leader">Current turn: <strong>${players[currentPlayer].name}</strong></div>`;
+        html += '<div class="trick-area">';
+        html += `<div class="trick-status"><strong>Trick:</strong> ${trick.map(x => x ? `${players[x.player].name}: <span class='card' data-suit='${x.card.suit}'>${x.card.rank}${x.card.suit}</span>` : '').join(' | ')}</div>`;
+        html += '</div>';
+        if (trick.length === 3) {
+            // Determine winner for display
+            let suit = trick[0].card.suit;
+            let best = trick[0];
+            for (let i = 1; i < 3; i++) {
+                if (trick[i].card.suit === suit) {
+                    if (rankValue(trick[i].card.rank) > rankValue(best.card.rank)) {
+                        best = trick[i];
+                    }
+                }
+            }
+            html += `<div class=\"trick-leader\"><strong>Trick winner:</strong> ${players[best.player].name}</div>`;
+            html += '<button id="next-trick-btn" class="next-trick-btn">Next Trick</button>';
+        } else {
+            html += `<div class=\"trick-leader\">Current turn: <strong>${players[currentPlayer].name}</strong></div>`;
+        }
         html += `<div class="tricks-won">Tricks won: ${players.map((p, i) => `${p.name}: ${tricks[i]}`).join(' | ')}</div>`;
+        html += '</div>';
         gameArea.innerHTML = html;
-        if (!players[currentPlayer].isAI) {
+        if (trick.length === 3) {
+            document.getElementById('next-trick-btn').onclick = function() {
+                dismissTrick();
+            };
+        } else if (!players[currentPlayer].isAI) {
             renderPlayableHand(currentPlayer);
         } else {
             setTimeout(() => aiPlay(currentPlayer), 1000);
@@ -257,18 +374,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderPlayableHand(playerIdx) {
-        // Only allow legal cards (must follow suit if possible)
         let suitToFollow = trick.length > 0 ? trick[0].card.suit : null;
         let legalCards = hands[playerIdx].filter(card => {
             if (!suitToFollow) return true;
             if (card.suit === suitToFollow) return true;
-            // If no cards of suitToFollow, can play anything
             return !hands[playerIdx].some(c => c.suit === suitToFollow);
         });
+        let sorted = sortCards(hands[playerIdx]);
         let html = '<div class="playable-hand">';
-        hands[playerIdx].forEach((card, idx) => {
+        sorted.forEach((card, idx) => {
+            const origIdx = hands[playerIdx].indexOf(card);
             const isLegal = legalCards.includes(card);
-            html += `<span class="card${isLegal ? ' playable' : ' disabled'}" data-idx="${idx}" style="cursor:${isLegal ? 'pointer' : 'not-allowed'};opacity:${isLegal ? 1 : 0.4}">${card.rank}${card.suit}</span> `;
+            html += `<span class="card${isLegal ? ' playable' : ' disabled'}" data-suit="${card.suit}" data-idx="${origIdx}" style="cursor:${isLegal ? 'pointer' : 'not-allowed'};opacity:${isLegal ? 1 : 0.4}">${card.rank}${card.suit}</span> `;
         });
         html += '</div>';
         gameArea.innerHTML += html;
@@ -297,28 +414,32 @@ document.addEventListener('DOMContentLoaded', function() {
         playedCards[playerIdx].push(card);
         hands[playerIdx].splice(cardIdx, 1);
         if (trick.length === 3) {
-            // Determine winner of the trick
-            let suit = trick[0].card.suit;
-            let best = trick[0];
-            for (let i = 1; i < 3; i++) {
-                if (trick[i].card.suit === suit) {
-                    // Compare rank
-                    if (rankValue(trick[i].card.rank) > rankValue(best.card.rank)) {
-                        best = trick[i];
-                    }
-                }
-            }
-            tricks[best.player]++;
-            leader = best.player;
-            trick = [];
-            if (hands[0].length === 0) {
-                endPlay();
-            } else {
-                currentPlayer = leader;
-                setTimeout(renderTrick, 1000);
-            }
+            renderTrick();
         } else {
             currentPlayer = (currentPlayer + 1) % 3;
+            renderTrick();
+        }
+    }
+
+    function dismissTrick() {
+        // Determine winner of the trick
+        let suit = trick[0].card.suit;
+        let best = trick[0];
+        for (let i = 1; i < 3; i++) {
+            if (trick[i].card.suit === suit) {
+                // Compare rank
+                if (rankValue(trick[i].card.rank) > rankValue(best.card.rank)) {
+                    best = trick[i];
+                }
+            }
+        }
+        tricks[best.player]++;
+        leader = best.player;
+        trick = [];
+        if (hands[0].length === 0) {
+            endPlay();
+        } else {
+            currentPlayer = leader;
             renderTrick();
         }
     }
