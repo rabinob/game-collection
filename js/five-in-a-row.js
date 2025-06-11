@@ -10,6 +10,12 @@ let players = {
 };
 let winner = null;
 
+// AI-related variables
+let gameMode = 'human'; // 'human' or 'ai'
+let aiDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+let ai = null;
+let isAiThinking = false;
+
 // Initialize the game
 function initGame() {
     board = Array(15).fill().map(() => Array(15).fill(''));
@@ -17,26 +23,83 @@ function initGame() {
     loadPlayers();
 }
 
+// Set game mode
+function setGameMode(mode) {
+    gameMode = mode;
+    const humanMode = document.getElementById('human-mode');
+    const aiMode = document.getElementById('ai-mode');
+    const aiSettings = document.getElementById('ai-settings');
+    const playerOInputs = document.getElementById('player-o-inputs');
+    
+    if (mode === 'ai') {
+        humanMode.classList.remove('selected');
+        aiMode.classList.add('selected');
+        aiSettings.style.display = 'block';
+        playerOInputs.style.display = 'none';
+        
+        // Set AI player name
+        players.O.name = `AI (${aiDifficulty})`;
+        players.O.phone = '';
+        players.O.email = '';
+    } else {
+        aiMode.classList.remove('selected');
+        humanMode.classList.add('selected');
+        aiSettings.style.display = 'none';
+        playerOInputs.style.display = 'flex';
+        
+        // Reset to human player
+        players.O.name = document.getElementById('player-o-name').value.trim();
+        players.O.phone = document.getElementById('player-o-phone').value.trim();
+        players.O.email = document.getElementById('player-o-email').value.trim();
+    }
+}
+
+// Set AI difficulty
+function setAiDifficulty(difficulty) {
+    aiDifficulty = difficulty;
+    players.O.name = `AI (${difficulty})`;
+    
+    // Update difficulty buttons
+    document.querySelectorAll('.ai-difficulty').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.getElementById(`difficulty-${difficulty}`).classList.add('selected');
+}
+
 // Start game after player setup
 function startGame() {
     const playerXName = document.getElementById('player-x-name').value.trim();
-    const playerXPhone = document.getElementById('player-x-phone').value.trim();
-    const playerXEmail = document.getElementById('player-x-email').value.trim();
-    const playerOName = document.getElementById('player-o-name').value.trim();
-    const playerOPhone = document.getElementById('player-o-phone').value.trim();
-    const playerOEmail = document.getElementById('player-o-email').value.trim();
-
-    if (!playerXName || !playerOName) {
-        alert('Please enter names for both players!');
+    
+    if (!playerXName) {
+        alert('Please enter a name for Player X!');
         return;
     }
 
-    players.X.name = playerXName;
-    players.X.phone = playerXPhone;
-    players.X.email = playerXEmail;
-    players.O.name = playerOName;
-    players.O.phone = playerOPhone;
-    players.O.email = playerOEmail;
+    if (gameMode === 'human') {
+        const playerOName = document.getElementById('player-o-name').value.trim();
+        if (!playerOName) {
+            alert('Please enter a name for Player O!');
+            return;
+        }
+        
+        players.X.name = playerXName;
+        players.X.phone = document.getElementById('player-x-phone').value.trim();
+        players.X.email = document.getElementById('player-x-email').value.trim();
+        players.O.name = playerOName;
+        players.O.phone = document.getElementById('player-o-phone').value.trim();
+        players.O.email = document.getElementById('player-o-email').value.trim();
+    } else {
+        // AI mode
+        players.X.name = playerXName;
+        players.X.phone = document.getElementById('player-x-phone').value.trim();
+        players.X.email = document.getElementById('player-x-email').value.trim();
+        players.O.name = `AI (${aiDifficulty})`;
+        players.O.phone = '';
+        players.O.email = '';
+        
+        // Initialize AI
+        ai = new FiveInARowAI(aiDifficulty);
+    }
 
     savePlayers();
     updatePlayerDisplays();
@@ -55,6 +118,8 @@ function showSetup() {
     document.getElementById('game-info').style.display = 'none';
     document.getElementById('game-area').style.display = 'none';
     gameStarted = false;
+    gameActive = true;
+    isAiThinking = false;
 }
 
 // Update player displays
@@ -62,7 +127,12 @@ function updatePlayerDisplays() {
     document.getElementById('player-x-display').textContent = players.X.name || 'X';
     document.getElementById('player-o-display').textContent = players.O.name || 'O';
     
-    const currentPlayerName = players[currentPlayer].name || currentPlayer;
+    let currentPlayerName = players[currentPlayer].name || currentPlayer;
+    
+    if (isAiThinking && currentPlayer === 'O' && gameMode === 'ai') {
+        currentPlayerName += ' (thinking...)';
+    }
+    
     document.getElementById('current-player').textContent = currentPlayerName;
 }
 
@@ -85,8 +155,9 @@ function createBoard() {
 
 // Make a move
 function makeMove(row, col) {
-    if (!gameActive || !gameStarted || board[row][col] !== '') return;
+    if (!gameActive || !gameStarted || board[row][col] !== '' || isAiThinking) return;
 
+    // Human move
     board[row][col] = currentPlayer;
     updateCell(row, col);
 
@@ -98,15 +169,76 @@ function makeMove(row, col) {
         saveScores();
         updateScoreDisplay();
         showSMSButton();
-    } else if (checkDraw()) {
+        return;
+    } 
+    
+    if (checkDraw()) {
         endGame("🤝 It's a draw!");
         winner = null;
         scores.draws++;
         saveScores();
         updateScoreDisplay();
-    } else {
-        switchPlayer();
+        return;
     }
+
+    switchPlayer();
+
+    // If it's AI's turn, make AI move
+    if (currentPlayer === 'O' && gameMode === 'ai' && gameActive) {
+        makeAiMove();
+    }
+}
+
+// Make AI move with thinking delay
+function makeAiMove() {
+    if (!ai || isAiThinking) return;
+    
+    isAiThinking = true;
+    updatePlayerDisplays();
+    
+    // Disable board clicks during AI thinking
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.style.pointerEvents = 'none';
+    });
+    
+    // AI thinking delay for better UX
+    const thinkingTime = aiDifficulty === 'easy' ? 500 : 
+                        aiDifficulty === 'medium' ? 1000 : 1500;
+    
+    setTimeout(() => {
+        const aiMove = ai.makeMove(board);
+        
+        if (aiMove && gameActive) {
+            board[aiMove.row][aiMove.col] = currentPlayer;
+            updateCell(aiMove.row, aiMove.col);
+            
+            if (checkWin(aiMove.row, aiMove.col)) {
+                const playerName = players[currentPlayer].name || `Player ${currentPlayer}`;
+                endGame(`🎉 ${playerName} wins!`);
+                winner = currentPlayer;
+                scores[currentPlayer]++;
+                saveScores();
+                updateScoreDisplay();
+                showSMSButton();
+            } else if (checkDraw()) {
+                endGame("🤝 It's a draw!");
+                winner = null;
+                scores.draws++;
+                saveScores();
+                updateScoreDisplay();
+            } else {
+                switchPlayer();
+            }
+        }
+        
+        isAiThinking = false;
+        updatePlayerDisplays();
+        
+        // Re-enable board clicks
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.style.pointerEvents = 'auto';
+        });
+    }, thinkingTime);
 }
 
 // Update cell display
@@ -181,6 +313,7 @@ function switchPlayer() {
 // End game
 function endGame(message) {
     gameActive = false;
+    isAiThinking = false;
     const winnerMessage = document.getElementById('winner-message');
     winnerMessage.textContent = message;
     winnerMessage.classList.add('show');
@@ -192,6 +325,7 @@ function resetGame() {
     currentPlayer = 'X';
     gameActive = true;
     winner = null;
+    isAiThinking = false;
     
     updatePlayerDisplays();
     const playerElement = document.getElementById('current-player');
@@ -204,6 +338,11 @@ function resetGame() {
     document.getElementById('email-btn').style.display = 'none';
     
     createBoard();
+    
+    // Re-enable board clicks
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.style.pointerEvents = 'auto';
+    });
 }
 
 // Save scores to localStorage
@@ -311,4 +450,8 @@ function loadPlayers() {
 // Start the game when the page loads
 document.addEventListener('DOMContentLoaded', function() {
     initGame();
+    
+    // Initialize game mode buttons
+    setGameMode('human');
+    setAiDifficulty('medium');
 }); 

@@ -1,3 +1,4 @@
+// Game state variables
 let board = [];
 let currentPlayer = 'white';
 let selectedPiece = null;
@@ -12,11 +13,60 @@ let winner = null;
 let mustContinueWith = null; // Piece that must continue jumping
 let possibleMoves = [];
 
+// AI-related variables
+let gameMode = 'human'; // 'human' or 'ai'
+let aiDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+let ai = null;
+let isAiThinking = false;
+
 function initGame() {
     board = Array(8).fill().map(() => Array(8).fill(null));
     setupInitialBoard();
     loadScores();
     loadPlayers();
+}
+
+// Set game mode
+function setGameMode(mode) {
+    gameMode = mode;
+    const humanMode = document.getElementById('human-mode');
+    const aiMode = document.getElementById('ai-mode');
+    const aiSettings = document.getElementById('ai-settings');
+    const playerWhiteInputs = document.getElementById('player-white-inputs');
+    
+    if (mode === 'ai') {
+        humanMode.classList.remove('selected');
+        aiMode.classList.add('selected');
+        aiSettings.style.display = 'block';
+        playerWhiteInputs.style.display = 'none';
+        
+        // Set AI player name
+        players.white.name = `AI (${aiDifficulty})`;
+        players.white.phone = '';
+        players.white.email = '';
+    } else {
+        aiMode.classList.remove('selected');
+        humanMode.classList.add('selected');
+        aiSettings.style.display = 'none';
+        playerWhiteInputs.style.display = 'flex';
+        
+        // Reset to human player
+        players.white.name = document.getElementById('player-white-name').value.trim();
+        players.white.phone = document.getElementById('player-white-phone').value.trim();
+        players.white.email = document.getElementById('player-white-email').value.trim();
+    }
+}
+
+// Set AI difficulty
+function setAiDifficulty(difficulty) {
+    aiDifficulty = difficulty;
+    players.white.name = `AI (${difficulty})`;
+    
+    // Update difficulty buttons
+    document.querySelectorAll('.ai-difficulty').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.getElementById(`difficulty-${difficulty}`).classList.add('selected');
 }
 
 function setupInitialBoard() {
@@ -42,23 +92,37 @@ function setupInitialBoard() {
 // Start game after player setup
 function startGame() {
     const playerRedName = document.getElementById('player-red-name').value.trim();
-    const playerRedPhone = document.getElementById('player-red-phone').value.trim();
-    const playerRedEmail = document.getElementById('player-red-email').value.trim();
-    const playerWhiteName = document.getElementById('player-white-name').value.trim();
-    const playerWhitePhone = document.getElementById('player-white-phone').value.trim();
-    const playerWhiteEmail = document.getElementById('player-white-email').value.trim();
-
-    if (!playerRedName || !playerWhiteName) {
-        alert('Please enter names for both players!');
+    
+    if (!playerRedName) {
+        alert('Please enter a name for the Red player!');
         return;
     }
 
-    players.red.name = playerRedName;
-    players.red.phone = playerRedPhone;
-    players.red.email = playerRedEmail;
-    players.white.name = playerWhiteName;
-    players.white.phone = playerWhitePhone;
-    players.white.email = playerWhiteEmail;
+    if (gameMode === 'human') {
+        const playerWhiteName = document.getElementById('player-white-name').value.trim();
+        if (!playerWhiteName) {
+            alert('Please enter a name for the White player!');
+            return;
+        }
+        
+        players.red.name = playerRedName;
+        players.red.phone = document.getElementById('player-red-phone').value.trim();
+        players.red.email = document.getElementById('player-red-email').value.trim();
+        players.white.name = playerWhiteName;
+        players.white.phone = document.getElementById('player-white-phone').value.trim();
+        players.white.email = document.getElementById('player-white-email').value.trim();
+    } else {
+        // AI mode
+        players.red.name = playerRedName;
+        players.red.phone = document.getElementById('player-red-phone').value.trim();
+        players.red.email = document.getElementById('player-red-email').value.trim();
+        players.white.name = `AI (${aiDifficulty})`;
+        players.white.phone = '';
+        players.white.email = '';
+        
+        // Initialize AI
+        ai = new CheckersAI(aiDifficulty);
+    }
 
     savePlayers();
     updatePlayerDisplays();
@@ -69,6 +133,11 @@ function startGame() {
 
     gameStarted = true;
     createBoard();
+    
+    // If AI goes first (white), make AI move
+    if (currentPlayer === 'white' && gameMode === 'ai' && gameActive) {
+        setTimeout(() => makeAiMove(), 1000);
+    }
 }
 
 // Show setup screen
@@ -77,6 +146,8 @@ function showSetup() {
     document.getElementById('game-info').style.display = 'none';
     document.getElementById('game-area').style.display = 'none';
     gameStarted = false;
+    gameActive = true;
+    isAiThinking = false;
 }
 
 // Update player displays
@@ -84,24 +155,31 @@ function updatePlayerDisplays() {
     document.getElementById('player-red-display').textContent = players.red.name || 'Red';
     document.getElementById('player-white-display').textContent = players.white.name || 'White';
     
-    const currentPlayerName = players[currentPlayer].name || currentPlayer;
+    let currentPlayerName = players[currentPlayer].name || currentPlayer;
+    
+    if (isAiThinking && currentPlayer === 'white' && gameMode === 'ai') {
+        currentPlayerName += ' (thinking...)';
+    }
+    
     let displayText = currentPlayerName;
     
-    if (mustContinueWith) {
-        displayText += ' (must continue jumping!)';
-    } else if (gameActive && gameStarted) {
-        const availableCaptures = getAllCaptures(currentPlayer);
-        if (availableCaptures.length > 0) {
-            // Count how many different pieces can capture
-            const capturingPieces = new Set();
-            availableCaptures.forEach(capture => {
-                capturingPieces.add(`${capture.fromRow}-${capture.fromCol}`);
-            });
-            
-            if (capturingPieces.size > 1) {
-                displayText += ` (must capture! ${capturingPieces.size} pieces can capture - choose one)`;
-            } else {
-                displayText += ' (must capture!)';
+    if (!isAiThinking) {
+        if (mustContinueWith) {
+            displayText += ' (must continue jumping!)';
+        } else if (gameActive && gameStarted) {
+            const availableCaptures = getAllCaptures(currentPlayer);
+            if (availableCaptures.length > 0) {
+                // Count how many different pieces can capture
+                const capturingPieces = new Set();
+                availableCaptures.forEach(capture => {
+                    capturingPieces.add(`${capture.fromRow}-${capture.fromCol}`);
+                });
+                
+                if (capturingPieces.size > 1) {
+                    displayText += ` (must capture! ${capturingPieces.size} pieces can capture - choose one)`;
+                } else {
+                    displayText += ' (must capture!)';
+                }
             }
         }
     }
@@ -134,7 +212,7 @@ function createBoard() {
 }
 
 function handleCellClick(row, col) {
-    if (!gameActive || !gameStarted) return;
+    if (!gameActive || !gameStarted || isAiThinking) return;
 
     const piece = board[row][col];
 
@@ -480,6 +558,11 @@ function makeMove(fromRow, fromCol, toRow, toCol) {
         showSMSButton();
     } else {
         switchPlayer();
+        
+        // If it's AI's turn, make AI move
+        if (currentPlayer === 'white' && gameMode === 'ai' && gameActive) {
+            setTimeout(() => makeAiMove(), 1000);
+        }
     }
 }
 
@@ -531,6 +614,7 @@ function switchPlayer() {
 
 function endGame(message) {
     gameActive = false;
+    isAiThinking = false;
     const winnerMessage = document.getElementById('winner-message');
     winnerMessage.textContent = message;
     winnerMessage.classList.add('show');
@@ -545,6 +629,7 @@ function resetGame() {
     selectedPiece = null;
     mustContinueWith = null;
     possibleMoves = [];
+    isAiThinking = false;
     
     clearHighlights();
     updatePlayerDisplays();
@@ -557,6 +642,16 @@ function resetGame() {
     document.getElementById('email-btn').style.display = 'none';
     
     createBoard();
+    
+    // Re-enable board clicks
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.style.pointerEvents = 'auto';
+    });
+    
+    // If AI goes first (white), make AI move
+    if (currentPlayer === 'white' && gameMode === 'ai' && gameActive) {
+        setTimeout(() => makeAiMove(), 1000);
+    }
 }
 
 // Save scores to localStorage
@@ -653,4 +748,125 @@ function loadPlayers() {
 // Start the game when the page loads
 document.addEventListener('DOMContentLoaded', function() {
     initGame();
-}); 
+    
+    // Initialize game mode buttons
+    setGameMode('human');
+    setAiDifficulty('medium');
+});
+
+// Make AI move with thinking delay
+function makeAiMove() {
+    if (!ai || isAiThinking || currentPlayer !== 'white' || gameMode !== 'ai') return;
+    
+    isAiThinking = true;
+    updatePlayerDisplays();
+    
+    // Disable board clicks during AI thinking
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.style.pointerEvents = 'none';
+    });
+    
+    // AI thinking delay for better UX
+    const thinkingTime = aiDifficulty === 'easy' ? 800 : 
+                        aiDifficulty === 'medium' ? 1500 : 2500;
+    
+    setTimeout(() => {
+        const aiMove = ai.makeMove(board);
+        
+        if (aiMove && gameActive) {
+            // Execute the AI move
+            executeAiMove(aiMove);
+        }
+        
+        isAiThinking = false;
+        updatePlayerDisplays();
+        
+        // Re-enable board clicks
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.style.pointerEvents = 'auto';
+        });
+    }, thinkingTime);
+}
+
+// Execute AI move
+function executeAiMove(aiMove) {
+    const piece = board[aiMove.fromRow][aiMove.fromCol];
+    
+    // Move the piece
+    board[aiMove.toRow][aiMove.toCol] = piece;
+    board[aiMove.fromRow][aiMove.fromCol] = null;
+    
+    let wasCapture = false;
+    
+    // Handle captures
+    if (aiMove.capturedPieces && aiMove.capturedPieces.length > 0) {
+        aiMove.capturedPieces.forEach(captured => {
+            board[captured.row][captured.col] = null;
+        });
+        wasCapture = true;
+    }
+    
+    // Check for king promotion
+    let justBecameKing = false;
+    if ((piece.color === 'red' && aiMove.toRow === 7) || (piece.color === 'white' && aiMove.toRow === 0)) {
+        if (!piece.isKing) {
+            piece.isKing = true;
+            justBecameKing = true;
+        }
+    }
+    
+    clearHighlights();
+    selectedPiece = null;
+    
+    // Check if this piece can capture again (multi-jump)
+    if (wasCapture) {
+        const additionalCaptures = getPossibleMoves(aiMove.toRow, aiMove.toCol).filter(m => m.isCapture);
+        if (additionalCaptures.length > 0) {
+            // Must continue with this piece
+            mustContinueWith = { row: aiMove.toRow, col: aiMove.toCol };
+            createBoard();
+            updatePlayerDisplays();
+            
+            // AI continues jumping
+            setTimeout(() => makeAiMove(), 1000);
+            return; // Don't switch players yet
+        } else {
+            // Capture sequence completed
+            const playerName = players[currentPlayer].name || currentPlayer;
+            const winnerMessage = document.getElementById('winner-message');
+            winnerMessage.textContent = `${playerName} completed capture sequence!`;
+            winnerMessage.classList.add('show');
+            setTimeout(() => {
+                winnerMessage.classList.remove('show');
+            }, 1500);
+        }
+    }
+    
+    // No more captures possible, end turn
+    mustContinueWith = null;
+    createBoard();
+    
+    // Show king promotion message
+    if (justBecameKing) {
+        const playerName = players[currentPlayer].name || currentPlayer;
+        const winnerMessage = document.getElementById('winner-message');
+        winnerMessage.textContent = `👑 ${playerName} got a KING! Kings can move in all directions!`;
+        winnerMessage.classList.add('show');
+        setTimeout(() => {
+            winnerMessage.classList.remove('show');
+        }, 3000);
+    }
+    
+    // Check for win
+    if (checkWin()) {
+        const playerName = players[currentPlayer].name || currentPlayer;
+        endGame(`🎉 ${playerName} wins!`);
+        winner = currentPlayer;
+        scores[currentPlayer]++;
+        saveScores();
+        updateScoreDisplay();
+        showSMSButton();
+    } else {
+        switchPlayer();
+    }
+} 

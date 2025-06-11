@@ -15,7 +15,37 @@
         </div>
         
         <div class="player-setup" id="player-setup">
-            <h3>👥 Player Setup</h3>
+            <h3>�� Player Setup</h3>
+            
+            <!-- Game Mode Selection -->
+            <div class="game-mode-selection">
+                <h4>🎮 Game Mode</h4>
+                <div class="mode-buttons">
+                    <button id="human-mode" class="mode-btn selected" onclick="setGameMode('human')">
+                        👥 Human vs Human
+                    </button>
+                    <button id="ai-mode" class="mode-btn" onclick="setGameMode('ai')">
+                        🤖 Human vs AI
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Difficulty Settings -->
+            <div id="ai-settings" class="ai-settings" style="display: none;">
+                <h4>🧠 AI Difficulty</h4>
+                <div class="difficulty-buttons">
+                    <button id="difficulty-easy" class="ai-difficulty" onclick="setAiDifficulty('easy')">
+                        😊 Easy
+                    </button>
+                    <button id="difficulty-medium" class="ai-difficulty selected" onclick="setAiDifficulty('medium')">
+                        🤔 Medium
+                    </button>
+                    <button id="difficulty-hard" class="ai-difficulty" onclick="setAiDifficulty('hard')">
+                        😤 Hard
+                    </button>
+                </div>
+            </div>
+            
             <div class="player-inputs">
                 <div class="player-input">
                     <label>Red Player:</label>
@@ -23,7 +53,7 @@
                     <input type="tel" id="player-red-phone" placeholder="Phone number" maxlength="15">
                     <input type="email" id="player-red-email" placeholder="Email address" maxlength="50">
                 </div>
-                <div class="player-input">
+                <div class="player-input" id="player-white-inputs">
                     <label>White Player:</label>
                     <input type="text" id="player-white-name" placeholder="Enter name" maxlength="20">
                     <input type="tel" id="player-white-phone" placeholder="Phone number" maxlength="15">
@@ -68,10 +98,15 @@
                 <li style="margin-bottom: 5px;">• <strong>Long-range captures:</strong> Kings can capture pieces at any distance</li>
                 <li style="margin-bottom: 5px;">• Newly crowned kings can continue multi-jumps immediately</li>
                 <li style="margin-bottom: 5px;">• Capture all enemy pieces to win!</li>
+                <li style="margin-bottom: 5px;">• <strong>AI Mode:</strong> Challenge the computer at different difficulty levels!</li>
+                <li style="margin-bottom: 5px;">• <strong>Easy AI:</strong> Makes some random moves, good for beginners</li>
+                <li style="margin-bottom: 5px;">• <strong>Medium AI:</strong> Strategic play with moderate thinking depth</li>
+                <li style="margin-bottom: 5px;">• <strong>Hard AI:</strong> Advanced strategy with deep game analysis</li>
             </ul>
         </div>
     </div>
 
+    <script src="../js/checkers-ai.js"></script>
     <script src="../js/checkers.js"></script>
 </body>
 </html> 

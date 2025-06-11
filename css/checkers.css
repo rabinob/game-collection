@@ -95,6 +95,88 @@ h1 { color: #333; flex-grow: 1; text-align: center; margin: 0; }
     text-align: center;
 }
 
+.player-setup h4 {
+    margin-bottom: 10px;
+    color: #333;
+    text-align: center;
+    font-size: 16px;
+}
+
+/* Game Mode Selection */
+.game-mode-selection {
+    margin-bottom: 20px;
+}
+
+.mode-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.mode-btn {
+    background-color: #ecf0f1;
+    color: #333;
+    padding: 10px 20px;
+    border: 2px solid #bdc3c7;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+    background-color: #d5dbdb;
+    border-color: #95a5a6;
+}
+
+.mode-btn.selected {
+    background-color: #3498db;
+    color: white;
+    border-color: #2980b9;
+}
+
+/* AI Settings */
+.ai-settings {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #e8f4fd;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+}
+
+.difficulty-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.ai-difficulty {
+    background-color: #f8f9fa;
+    color: #333;
+    padding: 8px 16px;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+.ai-difficulty:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.ai-difficulty.selected {
+    background-color: #28a745;
+    color: white;
+    border-color: #1e7e34;
+}
+
 .player-inputs {
     display: flex;
     gap: 20px;
