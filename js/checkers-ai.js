@@ -12,7 +12,7 @@ class CheckersAI {
         switch (difficulty) {
             case 'easy': return 2;
             case 'medium': return 4;
-            case 'hard': return 6;
+            case 'hard': return 8;
             default: return 4;
         }
     }
@@ -59,11 +59,16 @@ class CheckersAI {
         }
 
         const player = isMaximizing ? this.aiPlayer : this.humanPlayer;
-        const availableMoves = this.getAllMovesForPlayer(board, player);
+        let availableMoves = this.getAllMovesForPlayer(board, player);
         
-        if (availableMoves.length === 0) {
+        if (!availableMoves || availableMoves.length === 0) {
             const terminalScore = isMaximizing ? -10000 : 10000;
             return { score: terminalScore, move: null };
+        }
+
+        // Remove move pruning for hard
+        if (this.difficulty !== 'hard') {
+            availableMoves = availableMoves.slice(0, 16); // prune for easy/medium
         }
 
         let bestMove = availableMoves[0];
@@ -73,7 +78,6 @@ class CheckersAI {
             for (const move of availableMoves) {
                 const newBoard = this.simulateMove(board, move);
                 const result = this.minimax(newBoard, depth - 1, alpha, beta, false);
-                
                 if (result && result.score > maxScore) {
                     maxScore = result.score;
                     bestMove = move;
@@ -92,7 +96,6 @@ class CheckersAI {
             for (const move of availableMoves) {
                 const newBoard = this.simulateMove(board, move);
                 const result = this.minimax(newBoard, depth - 1, alpha, beta, true);
-
                 if (result && result.score < minScore) {
                     minScore = result.score;
                     bestMove = move;
@@ -249,21 +252,30 @@ class CheckersAI {
             for (let c = 0; c < 8; c++) {
                 const piece = board[r][c];
                 if (piece) {
+                    let pieceScore = piece.isKing ? 12 : 5;
+                    // Center control bonus
+                    if (c > 1 && c < 6 && r > 1 && r < 6) pieceScore += 0.5;
+                    // King safety
+                    if (piece.isKing && (r === 0 || r === 7 || c === 0 || c === 7)) pieceScore += 0.5;
+                    // Penalize exposed men
+                    if (!piece.isKing && (r === 0 || r === 7 || c === 0 || c === 7)) pieceScore -= 0.5;
                     if (piece.color === this.aiPlayer) {
                         aiPieces++;
                         if (piece.isKing) aiKings++;
-                        score += (piece.isKing ? 10 : 5) + this.getPositionValue(r, c, piece);
+                        score += pieceScore;
                     } else {
                         humanPieces++;
                         if (piece.isKing) humanKings++;
-                        score -= (piece.isKing ? 10 : 5) + this.getPositionValue(r, c, piece);
+                        score -= pieceScore;
                     }
                 }
             }
         }
         if (aiPieces === 0) return -10000;
         if (humanPieces === 0) return 10000;
-        return score + (aiKings - humanKings) * 5;
+        // Bonus for more kings
+        score += (aiKings - humanKings) * 2;
+        return score;
     }
 
     // Get positional value for a piece
