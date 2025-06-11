@@ -50,17 +50,18 @@ class CheckersAI {
         const score = this.evaluateBoard(board);
         
         if (depth === 0 || Math.abs(score) >= 10000) {
-            return { score };
+            return { score: score, move: null };
         }
 
         const player = isMaximizing ? this.aiPlayer : this.humanPlayer;
         const availableMoves = this.getAllMovesForPlayer(board, player);
         
         if (availableMoves.length === 0) {
-            return { score: isMaximizing ? -10000 : 10000 };
+            const terminalScore = isMaximizing ? -10000 : 10000;
+            return { score: terminalScore, move: null };
         }
 
-        let bestMove = null;
+        let bestMove = availableMoves[0];
 
         if (isMaximizing) {
             let maxScore = -Infinity;
@@ -68,11 +69,13 @@ class CheckersAI {
                 const newBoard = this.simulateMove(board, move);
                 const result = this.minimax(newBoard, depth - 1, alpha, beta, false);
                 
-                if (result.score > maxScore) {
+                if (result && result.score > maxScore) {
                     maxScore = result.score;
                     bestMove = move;
                 }
-                alpha = Math.max(alpha, result.score);
+                if (result) {
+                    alpha = Math.max(alpha, result.score);
+                }
                 if (beta <= alpha) break;
             }
             const finalResult = { score: maxScore, move: bestMove };
@@ -85,11 +88,13 @@ class CheckersAI {
                 const newBoard = this.simulateMove(board, move);
                 const result = this.minimax(newBoard, depth - 1, alpha, beta, true);
 
-                if (result.score < minScore) {
+                if (result && result.score < minScore) {
                     minScore = result.score;
                     bestMove = move;
                 }
-                beta = Math.min(beta, result.score);
+                if (result) {
+                    beta = Math.min(beta, result.score);
+                }
                 if (beta <= alpha) break;
             }
             const finalResult = { score: minScore, move: bestMove };
