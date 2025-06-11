@@ -773,7 +773,15 @@ function makeAiMove() {
     
     setTimeout(() => {
         const aiMove = ai.makeMove(board);
-        
+        if (!aiMove) {
+            // No valid move, just end turn or handle as a draw/loss
+            isAiThinking = false;
+            updatePlayerDisplays();
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.style.pointerEvents = 'auto';
+            });
+            return;
+        }
         if (aiMove && gameActive) {
             // Execute the AI move
             executeAiMove(aiMove);

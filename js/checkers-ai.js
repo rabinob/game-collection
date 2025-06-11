@@ -24,7 +24,7 @@ class CheckersAI {
         // Get all available moves for AI
         const availableMoves = this.getAllMovesForPlayer(board, this.aiPlayer);
         
-        if (availableMoves.length === 0) {
+        if (!availableMoves || availableMoves.length === 0) {
             return null;
         }
         if (availableMoves.length === 1) {
@@ -34,7 +34,12 @@ class CheckersAI {
         // Clear cache and use minimax for strategic move
         this.evaluationCache.clear();
         const bestMove = this.minimax(board, this.maxDepth, -Infinity, Infinity, true);
-        return bestMove.move || availableMoves[0];
+        // Defensive: If bestMove.move is not valid, fallback to a random move
+        if (bestMove && bestMove.move) {
+            return bestMove.move;
+        }
+        // Fallback: just pick a random move
+        return availableMoves[Math.floor(Math.random() * availableMoves.length)];
     }
 
     // Minimax algorithm with alpha-beta pruning and caching
