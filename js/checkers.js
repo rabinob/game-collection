@@ -774,7 +774,13 @@ function makeAiMove() {
     setTimeout(() => {
         const aiMove = ai.makeMove(board);
         if (!aiMove) {
-            // No valid move, just end turn or handle as a draw/loss
+            // No valid move for AI: end the game, declare human the winner
+            endGame('🎉 ' + (players.red.name || 'Red') + ' wins! (AI has no moves)');
+            winner = 'red';
+            scores['red']++;
+            saveScores();
+            updateScoreDisplay();
+            showSMSButton();
             isAiThinking = false;
             updatePlayerDisplays();
             document.querySelectorAll('.cell').forEach(cell => {
